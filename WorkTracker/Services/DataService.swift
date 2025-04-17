@@ -13,6 +13,7 @@ class DataService {
     private let jobsKey = "saved_jobs"
     private let shiftsKey = "saved_shifts"
     private let themeColorKey = "theme_color"
+    private let templatesKey = "saved_templates"
     
     private init() {}
     
@@ -142,3 +143,5 @@ struct ExportData: Codable {
     let themeColor: String
     let exportDate: Date
 }
+
+

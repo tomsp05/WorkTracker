@@ -16,7 +16,7 @@ struct CountingValueView: View {
     var negativeColor: Color = .red
     
     @State private var displayValue: Double
-    @State private var animationTimer: Timer?
+    @State private var timer: Timer?
     @State private var animationDuration: Double = 1.0
     @State private var animationStartTime: Date?
     
@@ -34,23 +34,16 @@ struct CountingValueView: View {
         Text(formattedValue)
             .font(.system(size: fontSize, weight: .bold))
             .foregroundColor(textColor)
+            .onAppear {
+                self.displayValue = value
+            }
             .onChange(of: value) { _, newValue in
-                if isAnimating {
-                    startAnimation(from: fromValue, to: newValue)
-                } else {
-                    self.displayValue = newValue
-                }
+                startAnimation(from: fromValue, to: newValue)
             }
             .onChange(of: isAnimating) { _, newIsAnimating in
                 if newIsAnimating {
                     startAnimation(from: fromValue, to: value)
-                } else {
-                    stopAnimation()
-                    self.displayValue = value
                 }
-            }
-            .onAppear {
-                self.displayValue = value
             }
             .onDisappear {
                 stopAnimation()
@@ -69,30 +62,34 @@ struct CountingValueView: View {
     
     private var textColor: Color {
         if isAnimating {
-            return value > fromValue ? positiveColor : (value < fromValue ? negativeColor : .white)
+            if value > fromValue {
+                return positiveColor
+            } else if value < fromValue {
+                return negativeColor
+            }
         }
-        return .white
+        return positiveColor // Default to positive color
     }
     
     private func startAnimation(from startValue: Double, to endValue: Double) {
-        // Stop any existing animation
-        stopAnimation()
-        
-        // Skip animation if values are very close
+        // Skip animation if values are the same
         if abs(endValue - startValue) < 0.01 {
             displayValue = endValue
             return
         }
+        
+        // Stop any existing animation
+        stopAnimation()
         
         // Store animation start time
         animationStartTime = Date()
         
         // Calculate appropriate duration based on the difference
         let difference = abs(endValue - startValue)
-        animationDuration = min(max(difference / 100.0, 0.5), 2.0) // Between 0.5 and 2.0 seconds
+        animationDuration = min(max(difference / 100.0, 0.3), 1.0) // Between 0.3 and 1.0 seconds
         
         // Create a timer for smooth animation
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/30, repeats: true) { timer in
+        timer = Timer.scheduledTimer(withTimeInterval: 1/30, repeats: true) { timer in
             guard let startTime = animationStartTime else {
                 stopAnimation()
                 return
@@ -116,8 +113,8 @@ struct CountingValueView: View {
     }
     
     private func stopAnimation() {
-        animationTimer?.invalidate()
-        animationTimer = nil
+        timer?.invalidate()
+        timer = nil
         animationStartTime = nil
     }
     

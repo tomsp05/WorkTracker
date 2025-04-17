@@ -14,6 +14,7 @@ class WorkHoursViewModel: ObservableObject {
     @Published var jobs: [Job] = []
     @Published var shifts: [WorkShift] = []
     
+    
     // Signal property for animations
     @Published var earningsDidChange: Bool = false
     
@@ -143,10 +144,23 @@ class WorkHoursViewModel: ObservableObject {
         earningsDidChange.toggle() // Trigger animation
     }
     
+    // This is just the deleteShift method that should be in the WorkHoursViewModel.swift file
+
     func deleteShift(_ shift: WorkShift) {
-        shifts.removeAll { $0.id == shift.id }
+        // First check if it's a recurring shift
+        if shift.isRecurring || hasRecurringChildren(shift) {
+            // Just remove this specific shift
+            shifts.removeAll { $0.id == shift.id }
+        } else {
+            // For non-recurring shifts, simple removal
+            shifts.removeAll { $0.id == shift.id }
+        }
+        
+        // Save changes to persistent storage
         DataService.shared.saveWorkShifts(shifts)
-        earningsDidChange.toggle() // Trigger animation
+        
+        // Trigger animation for earnings update
+        earningsDidChange.toggle()
     }
     
     func hasRecurringChildren(_ shift: WorkShift) -> Bool {

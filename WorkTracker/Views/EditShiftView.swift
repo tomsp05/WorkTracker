@@ -222,15 +222,18 @@ struct EditShiftView: View {
         }
         .navigationTitle("Edit Shift")
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
-        .alert(isPresented: $showingDeleteConfirmation) {
-            Alert(
-                title: Text("Delete Shift"),
-                message: Text("Are you sure you want to delete this shift?"),
-                primaryButton: .destructive(Text("Delete")) {
-                    deleteShift()
-                },
-                secondaryButton: .cancel()
-            )
+        .alert("Delete Shift", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteShift()
+            }
+        } message: {
+            Text("Are you sure you want to delete this shift?")
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
         .alert("Update Recurring Shifts", isPresented: $showingRecurringUpdateAlert) {
             Button("This shift only", role: .cancel) {
@@ -247,9 +250,6 @@ struct EditShiftView: View {
             }
         } message: {
             Text("This shift is part of a recurring series. Which shifts would you like to update?")
-        }
-        .alert(isPresented: $showingError) {
-            Alert(title: Text("Error"), message: Text(errorMessage), dismissButton: .default(Text("OK")))
         }
     }
     

@@ -113,7 +113,7 @@ struct ContentView: View {
                                     isAnimating: isAnimating,
                                     fontSize: 36,
                                     positiveColor: .white,
-                                                            negativeColor: .white
+                                                                negativeColor: .white
                                                                     )
                                 .scaleEffect(animationScale)
                                 .modifier(ShimmerEffect(
