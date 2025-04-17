@@ -5,7 +5,6 @@
 //  Created by Tom Speake on 4/17/25.
 //
 
-
 import SwiftUI
 
 struct ShiftCardView: View {
@@ -15,6 +14,30 @@ struct ShiftCardView: View {
     
     private var job: Job? {
         return viewModel.jobs.first(where: { $0.id == shift.jobId })
+    }
+    
+    // Calculate the actual earnings including the job's hourly rate
+    private var actualEarnings: Double {
+        // Get the appropriate rate (either override or job rate)
+        let rate: Double
+        if let override = shift.hourlyRateOverride {
+            rate = override
+        } else if let job = self.job {
+            rate = job.hourlyRate
+        } else {
+            rate = 0.0
+        }
+        
+        // Apply shift type multiplier
+        let multiplier: Double = {
+            switch shift.shiftType {
+            case .regular: return 1.0
+            case .overtime: return 1.5
+            case .holiday: return 2.0
+            }
+        }()
+        
+        return shift.duration * rate * multiplier
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -79,9 +102,11 @@ struct ShiftCardView: View {
                     
                     Spacer()
                     
-                    Text(formatCurrency(shift.earnings))
+                    // Use the properly calculated earnings
+                    Text(formatCurrency(actualEarnings))
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .fontWeight(.bold)
+                        .foregroundColor(jobColor)
                 }
                 
                 HStack {

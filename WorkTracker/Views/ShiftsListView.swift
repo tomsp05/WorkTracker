@@ -5,14 +5,6 @@
 //  Created by Tom Speake on 4/17/25.
 //
 
-
-//
-//  ShiftsListView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
 import SwiftUI
 
 struct ShiftsListView: View {
@@ -57,9 +49,9 @@ struct ShiftsListView: View {
         case .dateAscending:
             return filteredShifts.sorted { $0.date < $1.date }
         case .earningsDescending:
-            return filteredShifts.sorted { $0.earnings > $1.earnings }
+            return filteredShifts.sorted { calculateShiftEarnings($0) > calculateShiftEarnings($1) }
         case .earningsAscending:
-            return filteredShifts.sorted { $0.earnings < $1.earnings }
+            return filteredShifts.sorted { calculateShiftEarnings($0) < calculateShiftEarnings($1) }
         case .durationDescending:
             return filteredShifts.sorted { $0.duration > $1.duration }
         case .durationAscending:
@@ -67,9 +59,35 @@ struct ShiftsListView: View {
         }
     }
     
+    // Calculate correct earnings for a shift
+    private func calculateShiftEarnings(_ shift: WorkShift) -> Double {
+        // Get the appropriate rate (either override or job rate)
+        let rate: Double
+        if let override = shift.hourlyRateOverride {
+            rate = override
+        } else if let job = viewModel.jobs.first(where: { $0.id == shift.jobId }) {
+            rate = job.hourlyRate
+        } else {
+            rate = 0.0
+        }
+        
+        // Apply shift type multiplier
+        let multiplier: Double = {
+            switch shift.shiftType {
+            case .regular: return 1.0
+            case .overtime: return 1.5
+            case .holiday: return 2.0
+            }
+        }()
+        
+        return shift.duration * rate * multiplier
+    }
+    
     // Summary stats for the period
     private var totalEarnings: Double {
-        return filteredShifts.reduce(0) { $0 + $1.earnings }
+        return filteredShifts.reduce(0) { sum, shift in
+            return sum + calculateShiftEarnings(shift)
+        }
     }
     
     private var totalHours: Double {
@@ -128,6 +146,7 @@ struct ShiftsListView: View {
                     Text(formatCurrency(totalEarnings))
                         .font(.title2)
                         .fontWeight(.bold)
+                        .foregroundColor(viewModel.themeColor)
                 }
                 
                 Spacer()

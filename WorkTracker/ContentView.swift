@@ -25,7 +25,7 @@ struct ContentView: View {
     // Recent work shifts (limit to 5)
     private var recentShifts: [WorkShift] {
         return viewModel.shifts
-            .sorted { $0.date > $1.date }
+            .sorted { $0.date > $1.date } // Explicitly sort by date descending (newest first)
             .prefix(5)
             .filter { $0.date <= Date() } // Only show past or today's shifts
     }
@@ -225,7 +225,7 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 20)
             }
-            .navigationTitle("Work Hours")
+            .navigationTitle("Shifts")
             .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
             .onAppear {
                 previousEarnings = currentEarnings

@@ -39,6 +39,30 @@ struct EarningsDetailView: View {
         return viewModel.shifts.filter { $0.date >= startDate && $0.date <= endDate }.count
     }
     
+    // Helper function to calculate earnings for a shift
+    private func calculateShiftEarnings(_ shift: WorkShift) -> Double {
+        // Get the appropriate rate (either override or job rate)
+        let rate: Double
+        if let override = shift.hourlyRateOverride {
+            rate = override
+        } else if let job = viewModel.jobs.first(where: { $0.id == shift.jobId }) {
+            rate = job.hourlyRate
+        } else {
+            rate = 0.0
+        }
+        
+        // Apply shift type multiplier
+        let multiplier: Double = {
+            switch shift.shiftType {
+            case .regular: return 1.0
+            case .overtime: return 1.5
+            case .holiday: return 2.0
+            }
+        }()
+        
+        return shift.duration * rate * multiplier
+    }
+    
     // Job breakdown for the period
     private var jobBreakdown: [(job: Job, hours: Double, earnings: Double)] {
         let (startDate, endDate) = timeRange.dateRange
@@ -47,7 +71,9 @@ struct EarningsDetailView: View {
         for job in viewModel.jobs where job.isActive {
             let jobShifts = viewModel.shifts.filter { $0.jobId == job.id && $0.date >= startDate && $0.date <= endDate }
             let hours = jobShifts.reduce(0) { $0 + $1.duration }
-            let earnings = jobShifts.reduce(0) { $0 + $1.earnings }
+            
+            // Calculate correct earnings for each shift
+            let earnings = jobShifts.reduce(0) { $0 + calculateShiftEarnings($1) }
             
             if hours > 0 {
                 breakdown.append((job: job, hours: hours, earnings: earnings))
@@ -325,7 +351,10 @@ struct EarningsDetailView: View {
                         let hourEndOverlap = min(hourEnd, shift.endTime)
                         let overlapMinutes = hourEndOverlap.timeIntervalSince(hourStartOverlap) / 60
                         let proportionOfShift = totalShiftMinutes > 0 ? overlapMinutes / totalShiftMinutes : 0
-                        return sum + (shift.earnings * proportionOfShift)
+                        
+                        // Use our correct earnings calculation
+                        let fullShiftEarnings = calculateShiftEarnings(shift)
+                        return sum + (fullShiftEarnings * proportionOfShift)
                     }
                 } else {
                     // Hours calculation - add up overlapping time
@@ -368,7 +397,8 @@ struct EarningsDetailView: View {
             // Calculate value
             let value: Double
             if type == .earnings {
-                value = dayShifts.reduce(0) { $0 + $1.earnings }
+                // Use our correct earnings calculation
+                value = dayShifts.reduce(0) { $0 + calculateShiftEarnings($1) }
             } else {
                 value = dayShifts.reduce(0) { $0 + $1.duration }
             }
@@ -407,7 +437,8 @@ struct EarningsDetailView: View {
                 // Calculate value
                 let value: Double
                 if type == .earnings {
-                    value = weekShifts.reduce(0) { $0 + $1.earnings }
+                    // Use our correct earnings calculation
+                    value = weekShifts.reduce(0) { $0 + calculateShiftEarnings($1) }
                 } else {
                     value = weekShifts.reduce(0) { $0 + $1.duration }
                 }
@@ -536,6 +567,7 @@ struct JobBreakdownRow: View {
                 
                 Text(formatCurrency(earnings))
                     .font(.headline)
+                    .foregroundColor(jobColor)
             }
             
             HStack {
