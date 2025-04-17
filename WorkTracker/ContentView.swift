@@ -111,10 +111,10 @@ struct ContentView: View {
                                     value: currentEarnings,
                                     fromValue: previousEarnings,
                                     isAnimating: isAnimating,
-                                    fontSize: 42,
+                                    fontSize: 36,
                                     positiveColor: .white,
-                                    negativeColor: .white
-                                )
+                                                            negativeColor: .white
+                                                                    )
                                 .scaleEffect(animationScale)
                                 .modifier(ShimmerEffect(
                                     isAnimating: isAnimating,
@@ -138,7 +138,7 @@ struct ContentView: View {
                                         .padding(.vertical, 6)
                                         .background(
                                             Capsule()
-                                                .fill(Color(UIColor.secondarySystemBackground))
+                                                .fill(.white)
                                                 .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                                         )
                                         .offset(y: -50)

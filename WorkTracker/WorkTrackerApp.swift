@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct WorkTrackerApp: App {
+    // Create the view model at the app level
+    @StateObject private var viewModel = WorkHoursViewModel()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(viewModel)
         }
     }
 }

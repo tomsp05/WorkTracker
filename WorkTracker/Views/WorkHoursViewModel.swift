@@ -81,8 +81,14 @@ class WorkHoursViewModel: ObservableObject {
     }
     
     func updateJob(_ updatedJob: Job) {
-        if let index = jobs.firstIndex(where: { $0.id == updatedJob.id }) {
-            jobs[index] = updatedJob
+        if let _ = jobs.firstIndex(where: { $0.id == updatedJob.id }) {
+            // Find the job by ID
+            for i in 0..<jobs.count {
+                if jobs[i].id == updatedJob.id {
+                    jobs[i] = updatedJob
+                    break
+                }
+            }
             DataService.shared.saveJobs(jobs)
             
             // Update hourly rate for all shifts using this job if rate changed
@@ -96,31 +102,19 @@ class WorkHoursViewModel: ObservableObject {
         
         if hasShifts {
             // If job has shifts, mark as inactive instead of deleting
-            if let index = jobs.firstIndex(where: { $0.id == job.id }) {
-                jobs[index].isActive = false
-                DataService.shared.saveJobs(jobs)
+            for i in 0..<jobs.count {
+                if jobs[i].id == job.id {
+                    var updatedJob = job
+                    updatedJob.isActive = false
+                    jobs[i] = updatedJob
+                    break
+                }
             }
+            DataService.shared.saveJobs(jobs)
         } else {
             // If no shifts, can safely delete
             jobs.removeAll { $0.id == job.id }
             DataService.shared.saveJobs(jobs)
-        }
-    }
-    
-    private func updateShiftsForJobChange(_ job: Job) {
-        var shiftsChanged = false
-        
-        // Update earnings calculations for shifts with this job
-        for i in 0..<shifts.count {
-            if shifts[i].jobId == job.id && shifts[i].hourlyRateOverride == nil {
-                // Recalculate earnings based on job's new hourly rate
-                shiftsChanged = true
-            }
-        }
-        
-        if shiftsChanged {
-            DataService.shared.saveWorkShifts(shifts)
-            signalEarningsChange()
         }
     }
     
@@ -129,162 +123,160 @@ class WorkHoursViewModel: ObservableObject {
     func addShift(_ shift: WorkShift) {
         shifts.append(shift)
         DataService.shared.saveWorkShifts(shifts)
-        signalEarningsChange()
-        
-        // Generate recurring shifts if needed
-        if shift.isRecurring {
-            generateRecurringShifts(from: shift)
-        }
+        earningsDidChange.toggle() // Trigger animation
+    }
+    
+    func addShifts(_ newShifts: [WorkShift]) {
+        shifts.append(contentsOf: newShifts)
+        DataService.shared.saveWorkShifts(shifts)
+        earningsDidChange.toggle() // Trigger animation
     }
     
     func updateShift(_ updatedShift: WorkShift) {
-        if let index = shifts.firstIndex(where: { $0.id == updatedShift.id }) {
-            shifts[index] = updatedShift
-            DataService.shared.saveWorkShifts(shifts)
-            signalEarningsChange()
-            
-            // Update recurring series if this is a parent shift
-            if updatedShift.isRecurring && updatedShift.parentShiftId == nil {
-                updateRecurringShifts(updatedShift)
-            }
-        }
-    }
-    
-    func deleteShift(_ shift: WorkShift, deleteFutureSeries: Bool = false) {
-        if shift.isRecurring && shift.parentShiftId == nil && deleteFutureSeries {
-            // Delete this shift and all in its series
-            shifts.removeAll { $0.id == shift.id || $0.parentShiftId == shift.id }
-        } else {
-            // Delete just this shift
-            shifts.removeAll { $0.id == shift.id }
-        }
-        
-        DataService.shared.saveWorkShifts(shifts)
-        signalEarningsChange()
-    }
-    
-    // MARK: - Recurring Shifts
-    
-    private func generateRecurringShifts(from shift: WorkShift, upToDate: Date = Date().addingTimeInterval(60*60*24*90)) {
-        guard shift.isRecurring, shift.recurrenceInterval != .none else { return }
-        
-        let endDate = shift.recurrenceEndDate ?? upToDate
-        var currentDate = shift.date
-        
-        while currentDate <= endDate {
-            if let nextDate = calculateNextRecurrenceDate(from: currentDate, interval: shift.recurrenceInterval) {
-                if nextDate > endDate { break }
-                
-                let timeDifference = nextDate.timeIntervalSince(shift.date)
-                
-                var newShift = shift
-                newShift.id = UUID()
-                newShift.date = nextDate
-                newShift.startTime = shift.startTime.addingTimeInterval(timeDifference)
-                newShift.endTime = shift.endTime.addingTimeInterval(timeDifference)
-                newShift.parentShiftId = shift.id
-                
-                shifts.append(newShift)
-                currentDate = nextDate
-            } else {
+        for i in 0..<shifts.count {
+            if shifts[i].id == updatedShift.id {
+                shifts[i] = updatedShift
                 break
             }
         }
-        
         DataService.shared.saveWorkShifts(shifts)
+        earningsDidChange.toggle() // Trigger animation
     }
     
-    private func updateRecurringShifts(_ updatedShift: WorkShift) {
-        // Find all shifts in this series
-        let childShifts = shifts.filter { $0.parentShiftId == updatedShift.id }
-        
-        for child in childShifts {
-            if let childIndex = shifts.firstIndex(where: { $0.id == child.id }) {
-                // Only update certain properties, preserving date/times
-                var updatedChild = child
-                updatedChild.jobId = updatedShift.jobId
-                updatedChild.breakDuration = updatedShift.breakDuration
-                updatedChild.shiftType = updatedShift.shiftType
-                updatedChild.hourlyRateOverride = updatedShift.hourlyRateOverride
-                updatedChild.notes = updatedShift.notes
-                
-                shifts[childIndex] = updatedChild
-            }
-        }
-        
+    func deleteShift(_ shift: WorkShift) {
+        shifts.removeAll { $0.id == shift.id }
         DataService.shared.saveWorkShifts(shifts)
-        signalEarningsChange()
+        earningsDidChange.toggle() // Trigger animation
     }
     
-    private func calculateNextRecurrenceDate(from date: Date, interval: RecurrenceInterval) -> Date? {
-        let calendar = Calendar.current
-        
-        switch interval {
-        case .none:
-            return nil
-        case .daily:
-            return calendar.date(byAdding: .day, value: 1, to: date)
-        case .weekly:
-            return calendar.date(byAdding: .weekOfYear, value: 1, to: date)
-        case .biweekly:
-            return calendar.date(byAdding: .weekOfYear, value: 2, to: date)
-        case .monthly:
-            return calendar.date(byAdding: .month, value: 1, to: date)
-        }
+    func hasRecurringChildren(_ shift: WorkShift) -> Bool {
+        return shifts.contains { $0.parentShiftId == shift.id }
     }
     
-    // MARK: - Reporting Functions
-    
-    /// Get total earnings for a specific period
-    func totalEarnings(from startDate: Date, to endDate: Date) -> Double {
-        let filteredShifts = shifts.filter { 
-            let shiftDate = Calendar.current.startOfDay(for: $0.date)
-            return shiftDate >= startDate && shiftDate <= endDate
+    func updateShiftAndFuture(_ updatedShift: WorkShift) {
+        // Find the original shift date
+        guard let originalShift = shifts.first(where: { $0.id == updatedShift.id }),
+              let originalDate = shifts.first(where: { $0.id == updatedShift.id })?.date else { return }
+        
+        // Get all future recurrences
+        let futureDependents = shifts.filter { shift in
+            // If it's part of the same series and on or after this date
+            return (shift.parentShiftId == originalShift.parentShiftId || shift.parentShiftId == updatedShift.id) &&
+                shift.date >= originalDate
         }
         
-        return filteredShifts.reduce(0) { sum, shift in
-            let jobRate = jobs.first(where: { $0.id == shift.jobId })?.hourlyRate ?? 0
-            let rate = shift.hourlyRateOverride ?? jobRate
-            
-            let multiplier: Double = {
-                switch shift.shiftType {
-                case .regular: return 1.0
-                case .overtime: return 1.5
-                case .holiday: return 2.0
+        // Update this and all future shifts
+        for shift in futureDependents {
+            if shift.id == updatedShift.id {
+                // This is the shift being directly edited
+                for i in 0..<shifts.count {
+                    if shifts[i].id == shift.id {
+                        shifts[i] = updatedShift
+                        break
+                    }
                 }
-            }()
-            
-            return sum + (shift.duration * rate * multiplier)
-        }
-    }
-    
-    /// Get total hours worked for a specific period
-    func totalHours(from startDate: Date, to endDate: Date) -> Double {
-        let filteredShifts = shifts.filter { 
-            let shiftDate = Calendar.current.startOfDay(for: $0.date)
-            return shiftDate >= startDate && shiftDate <= endDate
-        }
-        
-        return filteredShifts.reduce(0) { sum, shift in
-            return sum + shift.duration
-        }
-    }
-    
-    /// Get earnings grouped by job for a specific period
-    func earningsByJob(from startDate: Date, to endDate: Date) -> [(job: Job, earnings: Double, hours: Double)] {
-        var result: [(job: Job, earnings: Double, hours: Double)] = []
-        
-        for job in jobs {
-            let jobShifts = shifts.filter {
-                $0.jobId == job.id && 
-                $0.date >= startDate && 
-                $0.date <= endDate
-            }
-            
-            let jobHours = jobShifts.reduce(0) { sum, shift in sum + shift.duration }
-            let jobEarnings = jobShifts.reduce(0) { sum, shift in
-                let rate = shift.hourlyRateOverride ?? job.hourlyRate
+            } else {
+                // Calculate the difference between original and updated shift
+                let timeDifference = updatedShift.startTime.timeIntervalSince(originalShift.startTime)
+                let durationDifference = updatedShift.duration - originalShift.duration
                 
+                // Find the shift to update
+                for i in 0..<shifts.count {
+                    if shifts[i].id == shift.id {
+                        // Apply changes proportionally to this shift
+                        var updatedFutureShift = shifts[i]
+                        updatedFutureShift.jobId = updatedShift.jobId
+                        updatedFutureShift.shiftType = updatedShift.shiftType
+                        updatedFutureShift.hourlyRateOverride = updatedShift.hourlyRateOverride
+                        updatedFutureShift.breakDuration = updatedShift.breakDuration
+                        updatedFutureShift.isPaid = updatedShift.isPaid
+                        updatedFutureShift.notes = updatedShift.notes
+                        
+                        // Adjust start and end times based on the changes made to the original
+                        updatedFutureShift.startTime = shift.startTime.addingTimeInterval(timeDifference)
+                        
+                        // Adjust end time to maintain the new duration
+                        let originalDuration = shift.endTime.timeIntervalSince(shift.startTime)
+                        let newDuration = originalDuration + (durationDifference * 3600) // Convert hours to seconds
+                        updatedFutureShift.endTime = updatedFutureShift.startTime.addingTimeInterval(newDuration)
+                        
+                        // Update in the array
+                        shifts[i] = updatedFutureShift
+                        break
+                    }
+                }
+            }
+        }
+        
+        DataService.shared.saveWorkShifts(shifts)
+        earningsDidChange.toggle() // Trigger animation
+    }
+    
+    func updateAllRecurringShifts(_ updatedShift: WorkShift) {
+        // Find the original shift
+        guard let originalShift = shifts.first(where: { $0.id == updatedShift.id }) else { return }
+        
+        // Find parent ID (could be the shift itself or its parent)
+        let seriesId = originalShift.parentShiftId ?? originalShift.id
+        
+        // Get all shifts in the same series
+        let seriesShifts = shifts.filter { shift in
+            return shift.id == seriesId || shift.parentShiftId == seriesId || shift.id == updatedShift.id
+        }
+        
+        // Update all shifts in the series
+        for shift in seriesShifts {
+            if shift.id == updatedShift.id {
+                // This is the shift being directly edited
+                for i in 0..<shifts.count {
+                    if shifts[i].id == shift.id {
+                        shifts[i] = updatedShift
+                        break
+                    }
+                }
+            } else {
+                // Update common properties
+                for i in 0..<shifts.count {
+                    if shifts[i].id == shift.id {
+                        var updatedSeriesShift = shifts[i]
+                        updatedSeriesShift.jobId = updatedShift.jobId
+                        updatedSeriesShift.shiftType = updatedShift.shiftType
+                        updatedSeriesShift.hourlyRateOverride = updatedShift.hourlyRateOverride
+                        updatedSeriesShift.breakDuration = updatedShift.breakDuration
+                        updatedSeriesShift.isPaid = updatedShift.isPaid
+                        updatedSeriesShift.notes = updatedShift.notes
+                        
+                        // Keep date and times as they were
+                        
+                        // Update in the array
+                        shifts[i] = updatedSeriesShift
+                        break
+                    }
+                }
+            }
+        }
+        
+        DataService.shared.saveWorkShifts(shifts)
+        earningsDidChange.toggle() // Trigger animation
+    }
+    
+    // MARK: - Earnings Calculations
+    
+    func totalEarnings(from startDate: Date, to endDate: Date) -> Double {
+        return shifts
+            .filter { $0.date >= startDate && $0.date <= endDate }
+            .reduce(0) { result, shift in
+                // For each shift, calculate its earnings using either the override rate or the job's rate
+                let rate: Double
+                if let override = shift.hourlyRateOverride {
+                    rate = override
+                } else if let job = jobs.first(where: { $0.id == shift.jobId }) {
+                    rate = job.hourlyRate
+                } else {
+                    rate = 0
+                }
+                
+                // Apply shift type multiplier
                 let multiplier: Double = {
                     switch shift.shiftType {
                     case .regular: return 1.0
@@ -293,35 +285,24 @@ class WorkHoursViewModel: ObservableObject {
                     }
                 }()
                 
-                return sum + (shift.duration * rate * multiplier)
+                return result + (shift.duration * rate * multiplier)
             }
-            
-            if jobHours > 0 {
-                result.append((job: job, earnings: jobEarnings, hours: jobHours))
-            }
+    }
+    
+    func totalHours(from startDate: Date, to endDate: Date) -> Double {
+        return shifts
+            .filter { $0.date >= startDate && $0.date <= endDate }
+            .reduce(0) { $0 + $1.duration }
+    }
+    
+    // Update shifts when a job is changed (e.g. hourly rate)
+    func updateShiftsForJobChange(_ updatedJob: Job) {
+        // Only update shifts that don't have custom hourly rate override
+        for shift in shifts where shift.jobId == updatedJob.id && shift.hourlyRateOverride == nil {
+            // The hourly rate is stored in the job, so we don't need to update the shift itself
+            // But we'll trigger the animation to reflect any earnings changes
+            earningsDidChange.toggle()
+            break // Only need to trigger once
         }
-        
-        return result.sorted(by: { $0.earnings > $1.earnings })
-    }
-    
-    // MARK: - Helpers
-    
-    func getJob(for shift: WorkShift) -> Job? {
-        return jobs.first { $0.id == shift.jobId }
-    }
-    
-    func activeJobs() -> [Job] {
-        return jobs.filter { $0.isActive }
-    }
-    
-    // MARK: - Settings & Animation
-    
-    func updateThemeColor(newColorName: String) {
-        themeColorName = newColorName
-        DataService.shared.saveThemeColor(newColorName)
-    }
-    
-    private func signalEarningsChange() {
-        earningsDidChange.toggle()
     }
 }
