@@ -5,9 +5,6 @@ struct ContentView: View {
     @Environment(\.colorScheme) var colorScheme
     
     @State private var previousEarnings: Double = 0.0
-    @State private var isAnimating: Bool = false
-    @State private var animationScale: CGFloat = 1.0
-    @State private var showChangeAmount: Bool = false
     @State private var viewDidAppear = false
     
     // Date range for the summary
@@ -64,34 +61,9 @@ struct ContentView: View {
         return formatter.string(from: date)
     }
     
-    // Refresh earnings display
-    func refreshEarningsDisplay() {
-        let currentAmount = currentEarnings
-        
-        if previousEarnings != currentAmount {
-            // Trigger animation
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                animationScale = 1.1
-                isAnimating = true
-                showChangeAmount = true
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                    animationScale = 1.0
-                }
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                withAnimation {
-                    isAnimating = false
-                    showChangeAmount = false
-                }
-                previousEarnings = currentAmount
-            }
-        } else {
-            previousEarnings = currentAmount
-        }
+    // Update counter when earnings change
+    func updateEarningsDisplay() {
+        previousEarnings = currentEarnings
     }
     
     var body: some View {
@@ -105,47 +77,15 @@ struct ContentView: View {
                                 .font(.headline)
                                 .foregroundColor(.white)
                             
-                            ZStack(alignment: .center) {
-                                // Main earnings with animation
-                                CountingValueView(
-                                    value: currentEarnings,
-                                    fromValue: previousEarnings,
-                                    isAnimating: isAnimating,
-                                    fontSize: 36,
-                                    positiveColor: .white,
-                                                                negativeColor: .white
-                                                                    )
-                                .scaleEffect(animationScale)
-                                .modifier(ShimmerEffect(
-                                    isAnimating: isAnimating,
-                                    isDarkMode: colorScheme == .dark
-                                ))
-                                
-                                // Change amount badge
-                                if showChangeAmount && previousEarnings != currentEarnings {
-                                    let difference = currentEarnings - previousEarnings
-                                    VStack {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: difference >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                                .foregroundColor(difference >= 0 ? .green : .red)
-                                                .font(.system(size: 16))
-                                            
-                                            Text(formatCurrency(abs(difference)))
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(difference >= 0 ? .green : .red)
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Capsule()
-                                                .fill(.white)
-                                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                        )
-                                        .offset(y: -50)
-                                    }
-                                    .transition(.scale.combined(with: .opacity))
-                                }
-                            }
+                            // Simplified earnings display with just the counting animation
+                            CountingValueView(
+                                value: currentEarnings,
+                                fromValue: previousEarnings,
+                                isAnimating: currentEarnings != previousEarnings,
+                                fontSize: 36,
+                                positiveColor: .white,
+                                negativeColor: .white
+                            )
                             
                             Text("\(formatHours(currentHours)) worked")
                                 .font(.subheadline)
@@ -192,7 +132,7 @@ struct ContentView: View {
                     .pickerStyle(SegmentedPickerStyle())
                     .padding(.horizontal)
                     .onChange(of: timeRange) { _, _ in
-                        refreshEarningsDisplay()
+                        updateEarningsDisplay()
                     }
                     
                     // Navigation cards in a 2x2 grid - matching the Finance app's design
@@ -290,41 +230,15 @@ struct ContentView: View {
             .onAppear {
                 previousEarnings = currentEarnings
                 viewDidAppear = true
-                
-                DispatchQueue.main.async {
-                    self.refreshEarningsDisplay()
-                }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 if viewDidAppear {
-                    DispatchQueue.main.async {
-                        self.refreshEarningsDisplay()
-                    }
+                    updateEarningsDisplay()
                 }
             }
             .onChange(of: viewModel.earningsDidChange) { _, _ in
-                let newEarningsValue = currentEarnings
-                
-                // Trigger animation when earnings change
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                    animationScale = 1.1
-                    isAnimating = true
-                    showChangeAmount = true
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                        animationScale = 1.0
-                    }
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation {
-                        isAnimating = false
-                        showChangeAmount = false
-                    }
-                    previousEarnings = newEarningsValue
-                }
+                // When earnings change, just update the previous value for the animation
+                updateEarningsDisplay()
             }
         }
     }
@@ -359,43 +273,5 @@ enum TimeRange: String, CaseIterable {
         }
         
         return (startDate, endDate)
-    }
-}
-
-// Reusing the Shimmer Effect from Finance app
-struct ShimmerEffect: ViewModifier {
-    var isAnimating: Bool
-    var isDarkMode: Bool
-    @State private var phase: CGFloat = 0
-    
-    func body(content: Content) -> some View {
-        if isAnimating {
-            content
-                .overlay(
-                    GeometryReader { geo in
-                        LinearGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: Color.clear, location: 0),
-                                .init(color: isDarkMode ? Color.white.opacity(0.3) : Color.white.opacity(0.5), location: 0.3),
-                                .init(color: isDarkMode ? Color.white.opacity(0.3) : Color.white.opacity(0.5), location: 0.7),
-                                .init(color: Color.clear, location: 1)
-                            ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .mask(content)
-                        .frame(width: geo.size.width * 2)
-                        .offset(x: -geo.size.width + (geo.size.width * 2) * phase)
-                    }
-                    .mask(content)
-                )
-                .onAppear {
-                    withAnimation(Animation.linear(duration: 1.0).repeatCount(2)) {
-                        self.phase = 1.0
-                    }
-                }
-        } else {
-            content
-        }
     }
 }
