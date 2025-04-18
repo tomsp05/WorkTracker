@@ -9,6 +9,10 @@ struct ContentView: View {
     
     // Date range for the summary
     @State private var timeRange: TimeRange = .thisWeek
+    @State private var currentIndex = 1  // Default to "This Week" (index 1)
+    
+    // Time ranges for navigation
+    private let timeRanges = TimeRange.allCases
     
     // Current earnings based on selected time range
     var currentEarnings: Double {
@@ -66,71 +70,125 @@ struct ContentView: View {
         previousEarnings = currentEarnings
     }
     
+    // Navigate to previous time period
+    private func goToPreviousPeriod() {
+        if currentIndex > 0 {
+            withAnimation(.spring()) {
+                currentIndex -= 1
+                timeRange = timeRanges[currentIndex]
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
+    }
+    
+    // Navigate to next time period
+    private func goToNextPeriod() {
+        if currentIndex < timeRanges.count - 1 {
+            withAnimation(.spring()) {
+                currentIndex += 1
+                timeRange = timeRanges[currentIndex]
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Earnings summary header - matching the Finance app's design
-                    NavigationLink(destination: EarningsDetailView(timeRange: $timeRange)) {
-                        VStack(spacing: 8) {
+                    // Earnings summary card with arrow navigation
+                    VStack(spacing: 0) {
+                        // Time period selector with arrow buttons
+                        HStack {
+                            // Left arrow button
+                            Button(action: goToPreviousPeriod) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 36, height: 36)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.white.opacity(0.25))
+                                    )
+                                    .opacity(currentIndex > 0 ? 1.0 : 0.3)
+                            }
+                            .disabled(currentIndex == 0)
+                            
+                            Spacer()
+                            
+                            // Time period title
                             Text(timeRange.title)
                                 .font(.headline)
                                 .foregroundColor(.white)
                             
-                            // Simplified earnings display with just the counting animation
-                            CountingValueView(
-                                value: currentEarnings,
-                                fromValue: previousEarnings,
-                                isAnimating: currentEarnings != previousEarnings,
-                                fontSize: 36,
-                                positiveColor: .white,
-                                negativeColor: .white
-                            )
+                            Spacer()
                             
-                            Text("\(formatHours(currentHours)) worked")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.9))
-                                .padding(.top, 4)
-                            
-                            // Visual cue that this is tappable
-                            HStack(spacing: 4) {
-                                Text("View Details")
-                                    .font(.caption)
-                                    .foregroundColor(.white)
-                                
+                            // Right arrow button
+                            Button(action: goToNextPeriod) {
                                 Image(systemName: "chevron.right")
-                                    .font(.caption)
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
+                                    .frame(width: 36, height: 36)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.white.opacity(0.25))
+                                    )
+                                    .opacity(currentIndex < timeRanges.count - 1 ? 1.0 : 0.3)
                             }
-                            .padding(.top, 2)
+                            .disabled(currentIndex == timeRanges.count - 1)
                         }
-                        .padding(.vertical, 24)
                         .padding(.horizontal, 20)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    viewModel.themeColor.opacity(0.7),
-                                    viewModel.themeColor
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .cornerRadius(20)
-                        .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
-                        .padding(.horizontal)
-                        .padding(.top)
-                    }
-                    
-                    // Time range picker
-                    Picker("Time Range", selection: $timeRange) {
-                        ForEach(TimeRange.allCases, id: \.self) { range in
-                            Text(range.title).tag(range)
+                        .padding(.top, 20)
+                        
+                        // Earnings details
+                        NavigationLink(destination: EarningsDetailView(timeRange: $timeRange)) {
+                            VStack(spacing: 8) {
+                                // Earnings amount
+                                CountingValueView(
+                                    value: currentEarnings,
+                                    fromValue: previousEarnings,
+                                    isAnimating: currentEarnings != previousEarnings,
+                                    fontSize: 36,
+                                    positiveColor: .white,
+                                    negativeColor: .white
+                                )
+                                
+                                Text("\(formatHours(currentHours)) worked")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .padding(.top, 4)
+                                
+                                // Visual cue that this is tappable
+                                HStack(spacing: 4) {
+                                    Text("View Details")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                }
+                                .padding(.top, 2)
+                            }
+                            .padding(.bottom, 20)
+                            .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .pickerStyle(SegmentedPickerStyle())
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                viewModel.themeColor.opacity(0.7),
+                                viewModel.themeColor
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(20)
+                    .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
                     .padding(.horizontal)
+                    .padding(.top)
                     .onChange(of: timeRange) { _, _ in
                         updateEarningsDisplay()
                     }
@@ -230,6 +288,11 @@ struct ContentView: View {
             .onAppear {
                 previousEarnings = currentEarnings
                 viewDidAppear = true
+                
+                // Set initial index based on default timeRange
+                if let index = timeRanges.firstIndex(of: timeRange) {
+                    currentIndex = index
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 if viewDidAppear {

@@ -9,6 +9,10 @@ import SwiftUI
 
 struct ShiftCardView: View {
     @EnvironmentObject var viewModel: WorkHoursViewModel
+    @Environment(\.colorScheme) var colorScheme
+    
+    // Animation state
+    @State private var isAppearing: Bool = false
     
     var shift: WorkShift
     
@@ -87,73 +91,83 @@ struct ShiftCardView: View {
     }
     
     var body: some View {
-        HStack(alignment: .center) {
-            // Left color bar showing job
-            Rectangle()
-                .fill(jobColor)
-                .frame(width: 8)
-                .cornerRadius(4)
+        HStack(alignment: .center, spacing: 12) {
+            // Job capsule indicator - maintaining the capsule look as requested
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            jobColor.opacity(colorScheme == .dark ? 0.8 : 0.7),
+                            jobColor.opacity(colorScheme == .dark ? 0.6 : 0.5)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 8, height: 42)
+                .shadow(color: jobColor.opacity(colorScheme == .dark ? 0.2 : 0.3), radius: 3, x: 0, y: 2)
+                .scaleEffect(isAppearing ? 1.0 : 0.8)
+                .opacity(isAppearing ? 1.0 : 0.0)
             
-            // Shift details
+            // Shift details with styling based on TransactionCardView
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
+                    // Job name
                     Text(job?.name ?? "Unknown Job")
-                        .font(.headline)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
                     
                     Spacer()
                     
-                    // Use the properly calculated earnings
+                    // Earnings amount
                     Text(formatCurrency(actualEarnings))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(jobColor)
+                        .font(.system(size: 16, weight: .semibold))
                 }
                 
                 HStack {
-                    Text(formatDate(shift.date))
-                        .font(.subheadline)
+                    // Date and time details
+                    Text("\(formatDate(shift.date)) • \(formatTime(shift.startTime)) - \(formatTime(shift.endTime))")
+                        .font(.system(size: 14))
                         .foregroundColor(.secondary)
                     
                     Spacer()
                     
-                    Text("\(formatTime(shift.startTime)) - \(formatTime(shift.endTime))")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                HStack {
+                    // Duration
                     Text(formatDuration(shift.duration))
-                        .font(.subheadline)
+                        .font(.system(size: 14))
                         .foregroundColor(.secondary)
-                    
-                    if shift.shiftType != .regular {
+                }
+                
+                // Shift type indicator (if not regular)
+                if shift.shiftType != .regular {
+                    HStack {
                         Text(shift.shiftType.rawValue.capitalized)
-                            .font(.caption)
-                            .padding(.horizontal, 6)
+                            .font(.system(size: 12, weight: .medium))
+                            .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(shift.shiftType == .overtime ? Color.orange.opacity(0.2) : Color.purple.opacity(0.2))
-                            .foregroundColor(shift.shiftType == .overtime ? .orange : .purple)
+                            .background(jobColor.opacity(0.2))
+                            .foregroundColor(jobColor)
                             .cornerRadius(4)
+                        
+                        Spacer()
                     }
-                    
-                    Spacer()
-                    
-                    if shift.isPaid {
-                        Text("Paid")
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.2))
-                            .foregroundColor(.green)
-                            .cornerRadius(4)
-                    }
+                    .padding(.top, 2)
                 }
             }
-            .padding(.leading, 8)
-            .padding(.vertical, 4)
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(UIColor.secondarySystemBackground))
+                .shadow(
+                    color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1),
+                    radius: 5, x: 0, y: 2
+                )
+        )
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                isAppearing = true
+            }
+        }
     }
 }
