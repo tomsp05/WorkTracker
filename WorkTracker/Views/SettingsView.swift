@@ -102,21 +102,6 @@ struct SettingsView: View {
                 // Preferences section
                 settingsSection(title: "Preferences", icon: "gearshape.fill") {
                     VStack(alignment: .leading, spacing: 16) {
-                        // Default time range
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Default Time Range")
-                                .font(.headline)
-                            
-                            Picker("", selection: $defaultTimeRange) {
-                                ForEach(TimeRange.allCases, id: \.self) { range in
-                                    Text(range.title).tag(range.rawValue)
-                                }
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .padding(.vertical, 6)
-                        }
-                        
-                        Divider()
                         
                         // Weekend inclusion toggle
                         HStack {
