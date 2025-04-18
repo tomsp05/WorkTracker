@@ -14,4 +14,5 @@ struct Job: Identifiable, Codable {
     var hourlyRate: Double
     var color: String // For visual identification
     var isActive: Bool = true
+    var presetShifts: [PresetShift] = [] // Added preset shifts array
 }
