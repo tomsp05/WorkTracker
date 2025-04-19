@@ -34,6 +34,30 @@ struct ContentView: View {
             .filter { $0.date <= Date() } // Only show past or today's shifts
     }
     
+    // Group recent shifts by week
+    private var groupedRecentShifts: [(date: Date, shifts: [WorkShift])] {
+        // Group by the start of week for each shift date
+        let calendar = Calendar.current
+        var groups = Dictionary<Date, [WorkShift]>()
+        
+        for shift in recentShifts {
+            // Get the start of the week containing this shift
+            let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: shift.date))!
+            
+            if groups[weekStart] == nil {
+                groups[weekStart] = []
+            }
+            
+            groups[weekStart]!.append(shift)
+        }
+        
+        // Sort the groups by date (newest first)
+        let sortedGroups = groups.sorted { $0.0 > $1.0 }
+        
+        // Return the sorted groups
+        return sortedGroups.map { (date: $0.0, shifts: $0.1) }
+    }
+    
     // Format currency (£)
     private func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
@@ -63,6 +87,27 @@ struct ContentView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return formatter.string(from: date)
+    }
+    
+    // Format week heading
+    private func formattedWeek(_ weekStartDate: Date) -> String {
+        let calendar = Calendar.current
+        let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate)!
+        
+        let startFormatter = DateFormatter()
+        let endFormatter = DateFormatter()
+        
+        // If same month, only show day number for start date
+        if calendar.component(.month, from: weekStartDate) == calendar.component(.month, from: weekEndDate) {
+            startFormatter.dateFormat = "d"
+            endFormatter.dateFormat = "d MMM yyyy"
+            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
+        } else {
+            // Different months
+            startFormatter.dateFormat = "d MMM"
+            endFormatter.dateFormat = "d MMM yyyy"
+            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
+        }
     }
     
     // Update counter when earnings change
@@ -225,7 +270,7 @@ struct ContentView: View {
                             NavigationLink(destination: SettingsView()) {
                                 NavCardView(
                                     title: "Settings",
-                                    subtitle: "Customize",
+                                    subtitle: "Customise",
                                     iconName: "gear"
                                 )
                             }
@@ -256,16 +301,45 @@ struct ContentView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)
                         } else {
-                            VStack(spacing: 12) {
-                                ForEach(recentShifts) { shift in
-                                    NavigationLink(destination: EditShiftView(shift: shift)) {
-                                        ShiftCardView(shift: shift)
-                                            .environmentObject(viewModel)
+                            ScrollView {
+                                LazyVStack(spacing: 12) {
+                                    // Iterate over grouped shifts by week
+                                    ForEach(groupedRecentShifts, id: \.date) { group in
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            // Week header with date and weekly stats
+                                            HStack {
+                                                // Show the week range
+                                                Text(formattedWeek(group.date))
+                                                    .font(.headline)
+                                                    .foregroundColor(.secondary)
+                                                
+                                                Spacer()
+                                                
+                                                // Weekly summary
+                                                let weeklyHours = group.shifts.reduce(0) { $0 + $1.duration }
+                                                Text(formatHours(weeklyHours))
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(.vertical, 4)
+                                            
+                                            Divider()
+                                            
+                                            // Shifts for this week
+                                            ForEach(group.shifts) { shift in
+                                                NavigationLink(destination: EditShiftView(shift: shift)) {
+                                                    ShiftCardView(shift: shift)
+                                                        .environmentObject(viewModel)
+                                                }
+                                                .buttonStyle(PlainButtonStyle())
+                                                .padding(.vertical, 2)
+                                            }
+                                        }
+                                        .padding(.vertical, 2)
                                     }
-                                    .buttonStyle(PlainButtonStyle())
                                 }
+                                .padding()
                             }
-                            .padding(.horizontal)
                             
                             NavigationLink(destination: ShiftsListView()) {
                                 Text("See All Shifts")
