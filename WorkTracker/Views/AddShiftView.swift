@@ -15,15 +15,16 @@ struct AddShiftView: View {
     // Optional pre-selected job ID
     var preSelectedJobId: UUID? = nil
     
-    // Form states
+    // Core shift data
     @State private var selectedJobId: UUID? = nil
     @State private var date = Date()
     @State private var startTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!
     @State private var endTime = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date())!
     @State private var breakDuration: Double = 0.5
-    @State private var shiftType = ShiftType.regular
     @State private var notes = ""
     @State private var isPaid = false
+    
+    // Payment settings
     @State private var hourlyRateOverride: Double? = nil
     @State private var useCustomRate = false
     
@@ -33,22 +34,34 @@ struct AddShiftView: View {
     @State private var recurrenceEndDate = Calendar.current.date(byAdding: .month, value: 3, to: Date())!
     @State private var hasEndDate = true
     
-    // Error state
+    // UI state
+    @State private var currentStep: FormStep = .basics
     @State private var showingError = false
     @State private var errorMessage = ""
     
-    // UI state
-    @State private var currentStep: FormStep = .timing
+    // Break duration settings
+    private let breakDurationRange: ClosedRange<Double> = 0.0...2.0
+    private let breakDurationStep: Double = 0.25
     
     // Form steps enum
-    enum FormStep {
-        case timing, payment, review
+    enum FormStep: Int, CaseIterable {
+        case basics = 0
+        case payment = 1
+        case review = 2
         
         var title: String {
             switch self {
-            case .timing: return "Timing"
-            case .payment: return "Payment Details"
+            case .basics: return "Basic Info"
+            case .payment: return "Payment"
             case .review: return "Review"
+            }
+        }
+        
+        var systemImage: String {
+            switch self {
+            case .basics: return "calendar.badge.clock"
+            case .payment: return "dollarsign.circle"
+            case .review: return "checkmark.circle"
             }
         }
     }
@@ -70,25 +83,22 @@ struct AddShiftView: View {
     }
     
     private var shiftEarnings: Double {
-        let multiplier: Double = {
-            switch shiftType {
-            case .regular: return 1.0
-            case .overtime: return 1.5
-            case .holiday: return 2.0
-            }
-        }()
-        return shiftDuration * effectiveHourlyRate * multiplier
+        return shiftDuration * effectiveHourlyRate
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Main content
+            // Content
             ScrollView {
                 VStack(spacing: 24) {
+                    // Step indicator
+                    StepIndicator(currentStep: currentStep)
+                        .padding(.top)
+                    
                     // Dynamic content based on current step
                     switch currentStep {
-                    case .timing:
-                        timingSection
+                    case .basics:
+                        basicsSection
                     case .payment:
                         paymentSection
                     case .review:
@@ -96,11 +106,11 @@ struct AddShiftView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 100)
+                .padding(.bottom, 100) // Space for navigation bar
             }
             
-            // Bottom navigation area with progress bar and buttons
-            bottomNavArea
+            // Navigation area
+            navigationFooter
         }
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .navigationTitle(currentStep.title)
@@ -118,63 +128,62 @@ struct AddShiftView: View {
     
     // MARK: - Form Sections
     
-    // Step 1: Timing
-    private var timingSection: some View {
+    // Step 1: Basic Information
+    private var basicsSection: some View {
         VStack(spacing: 20) {
-            // Date picker
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Date")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    DatePicker("", selection: $date, displayedComponents: .date)
-                        .datePickerStyle(GraphicalDatePickerStyle())
-                        .padding()
+            // Job selection
+            FormCard(title: "Job") {
+                if viewModel.jobs.isEmpty {
+                    EmptyStateView(message: "No jobs found. Add jobs first in the Settings.", systemImage: "briefcase")
+                } else {
+                    ForEach(viewModel.jobs.filter(\.isActive)) { job in
+                        JobSelectionRow(
+                            job: job,
+                            isSelected: selectedJobId == job.id,
+                            onTap: { selectedJobId = job.id }
+                        )
+                    }
                 }
-                .padding(.vertical, 4)
             }
             
-            // Time picker section
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Shift Times")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                // Start time
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+            // Date & Time
+            FormCard(title: "Date & Time") {
+                // Date picker
+                VStack(alignment: .leading) {
+                    Label("Date", systemImage: "calendar")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
                     
-                    HStack {
-                        Text("Start Time")
+                    DatePicker("", selection: $date, displayedComponents: .date)
+                        .datePickerStyle(CompactDatePickerStyle())
+                        .labelsHidden()
+                        .padding(.vertical, 8)
+                }
+                
+                Divider()
+                
+                // Time selection
+                HStack {
+                    VStack(alignment: .leading) {
+                        Label("Start", systemImage: "clock")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
-                        Spacer()
                         
                         DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
-                    .padding()
-                }
-                .frame(height: 60)
-                
-                // End time
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
                     
-                    HStack {
-                        Text("End Time")
+                    Spacer()
+                    
+                    Text("to")
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing) {
+                        Label("End", systemImage: "clock.fill")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
-                        Spacer()
                         
                         DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
                             .labelsHidden()
@@ -185,606 +194,365 @@ struct AddShiftView: View {
                                 }
                             }
                     }
-                    .padding()
                 }
-                .frame(height: 60)
+                .padding(.vertical, 8)
                 
-                // Break duration
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
+                Divider()
+                
+                // Break duration slider
+                VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Break Duration")
+                        Label("Break Duration", systemImage: "cup.and.saucer")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
                         
                         Spacer()
                         
-                        Picker("", selection: $breakDuration) {
-                            Text("No break").tag(0.0)
-                            Text("15 min").tag(0.25)
-                            Text("30 min").tag(0.5)
-                            Text("45 min").tag(0.75)
-                            Text("1 hour").tag(1.0)
-                            Text("1.5 hours").tag(1.5)
-                            Text("2 hours").tag(2.0)
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                    }
-                    .padding()
-                }
-                .frame(height: 60)
-            }
-            
-            // Summary for this step
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Shift Duration")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Total Hours")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Text(formatDuration(shiftDuration))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(viewModel.themeColor)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 24))
+                        Text(breakDurationText)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
                             .foregroundColor(viewModel.themeColor)
                     }
-                    .padding()
+                    .padding(.bottom, 8)
+                    
+                    HStack {
+                        Image(systemName: "tortoise")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                        
+                        Slider(
+                            value: $breakDuration,
+                            in: breakDurationRange,
+                            step: breakDurationStep
+                        )
+                        .accentColor(viewModel.themeColor)
+                        
+                        Image(systemName: "hare")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    
+                    // Duration tick marks
+                    HStack(spacing: 0) {
+                        Text("0h")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .frame(width: 30, alignment: .leading)
+                        
+                        Spacer()
+                        
+                        Text("1h")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        Text("2h")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .frame(width: 30, alignment: .trailing)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
                 }
+                .padding(.vertical, 8)
             }
             
-            // Recurring toggle
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Recurring")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Recurring Shift", isOn: $isRecurring)
-                            .padding(.vertical, 5)
-                        
-                        if isRecurring {
-                            Divider()
-                            
-                            HStack {
-                                Text("Repeat")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Picker("", selection: $recurrenceInterval) {
-                                    ForEach(RecurrenceInterval.allCases.filter { $0 != .none }, id: \.self) { interval in
-                                        Text(interval.rawValue).tag(interval)
-                                    }
-                                }
-                                .pickerStyle(MenuPickerStyle())
-                            }
-                            .padding(.vertical, 5)
-                            
-                            Toggle("End Date", isOn: $hasEndDate)
-                                .padding(.vertical, 5)
-                            
-                            if hasEndDate {
-                                DatePicker(
-                                    "Ends On",
-                                    selection: $recurrenceEndDate,
-                                    in: date...,
-                                    displayedComponents: .date
-                                )
-                                .datePickerStyle(CompactDatePickerStyle())
-                            }
-                        }
-                    }
-                    .padding()
-                }
-                .padding(.vertical, 4)
+            // Summary card
+            ShiftSummaryCard(
+                duration: shiftDuration,
+                hourlyRate: effectiveHourlyRate,
+                earnings: shiftEarnings,
+                themeColor: viewModel.themeColor
+            )
+        }
+    }
+    
+    // Break duration formatted text
+    private var breakDurationText: String {
+        if breakDuration == 0 {
+            return "No break"
+        } else if breakDuration == 1 {
+            return "1 hour"
+        } else if breakDuration < 1 {
+            return "\(Int(breakDuration * 60)) minutes"
+        } else {
+            let hours = Int(breakDuration)
+            let minutes = Int((breakDuration - Double(hours)) * 60)
+            if minutes == 0 {
+                return "\(hours) hours"
+            } else {
+                return "\(hours)h \(minutes)m"
             }
         }
     }
     
-    // Step 2: Payment (now including all job info and shift type)
+    // Step 2: Payment Details
     private var paymentSection: some View {
         VStack(spacing: 20) {
-            // Job selection
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Select Job")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                if viewModel.jobs.isEmpty {
-                    emptyStateView(message: "No jobs found. Add jobs in Settings.")
-                } else {
-                    ForEach(viewModel.jobs.filter(\.isActive)) { job in
-                        JobSelectionRow(
-                            job: job,
-                            isSelected: selectedJobId == job.id,
-                            onTap: {
-                                selectedJobId = job.id
-                                // Reset custom rate when job changes
-                                if !useCustomRate {
-                                    hourlyRateOverride = nil
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-            
-            // MOVED FROM BASIC INFO: Shift type selection
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Shift Type")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                HStack(spacing: 12) {
-                    ForEach(ShiftType.allCases, id: \.self) { type in
-                        TypeButton(
-                            title: type.rawValue.capitalized,
-                            isSelected: shiftType == type,
-                            action: { shiftType = type }
-                        )
-                    }
-                }
-            }
-            
-            // Custom rate toggle
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Payment Rate")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        if let jobId = selectedJobId, let job = viewModel.jobs.first(where: { $0.id == jobId }) {
-                            HStack {
-                                Text("Default Job Rate")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Spacer()
-                                
-                                Text(formatCurrency(job.hourlyRate))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.vertical, 5)
-                        }
-                        
-                        Toggle("Use Custom Rate", isOn: $useCustomRate)
-                            .padding(.vertical, 5)
-                        
-                        if useCustomRate {
-                            Divider()
-                            
-                            HStack {
-                                Text("Hourly Rate (£)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Spacer()
-                                
-                                TextField("Rate", value: $hourlyRateOverride, formatter: currencyFormatter)
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                            }
-                            .padding(.vertical, 5)
-                        }
-                    }
-                    .padding()
-                }
-                .padding(.vertical, 4)
-            }
-            
-            // Shift payment multiplier info
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Payment Multiplier")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("\(shiftType.rawValue.capitalized) Shift")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text(getMultiplierText(for: shiftType))
-                                .font(.subheadline)
-                                .foregroundColor(viewModel.themeColor)
-                                .fontWeight(.semibold)
-                        }
-                        .padding(.vertical, 5)
-                        
-                        Divider()
-                        
-                        HStack {
-                            Text("Hourly Rate")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text(formatCurrency(effectiveHourlyRate))
-                                .font(.subheadline)
-                        }
-                        .padding(.vertical, 5)
-                    }
-                    .padding()
-                }
-                .padding(.vertical, 4)
-            }
-            
-            // Earnings summary
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Earnings Summary")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(viewModel.themeColor.opacity(0.1))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    VStack(spacing: 12) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Total Earnings")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Text(formatCurrency(shiftEarnings))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(viewModel.themeColor)
-                            }
-                            
-                            Spacer()
-                            
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text("Hours")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Text(formatDuration(shiftDuration))
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                        
-                        // Calculate hourly earnings
-                        HStack {
-                            Text("Average Hourly Earnings")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text(formatCurrency(shiftDuration > 0 ? shiftEarnings / shiftDuration : 0))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding()
-                }
-                .padding(.vertical, 4)
-            }
-            
-            // Payment status
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Payment Status")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    HStack {
-                        Toggle("Mark as Paid", isOn: $isPaid)
-                        
-                        Spacer()
-                        
-                        Image(systemName: isPaid ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isPaid ? .green : .secondary)
-                    }
-                    .padding()
-                }
-                .frame(height: 60)
-            }
-            
-            // MOVED FROM BASIC INFO: Notes field
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Notes (Optional)")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
-                    
-                    TextEditor(text: $notes)
-                        .padding(8)
-                        .frame(minHeight: 100)
-                }
-                .frame(height: 100)
-            }
-        }
-    }
-    
-    // Step 3: Review
-    private var reviewSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Review Shift")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            // Card container with shift summary
-            VStack(alignment: .leading, spacing: 16) {
+            // Payment Rate
+            FormCard(title: "Payment Rate") {
                 if let jobId = selectedJobId, let job = viewModel.jobs.first(where: { $0.id == jobId }) {
                     HStack {
-                        Text("Job")
+                        Text("Default Job Rate")
                             .foregroundColor(.secondary)
+                        
                         Spacer()
-                        Text(job.name)
+                        
+                        Text(formatCurrency(job.hourlyRate))
                             .fontWeight(.medium)
                     }
-                    
-                    Divider()
+                    .padding(.vertical, 4)
                 }
                 
-                HStack {
-                    Text("Date")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(formatDate(date))
-                        .fontWeight(.medium)
-                }
-                
-                Divider()
-                
-                HStack {
-                    Text("Time")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text("\(formatTime(startTime)) - \(formatTime(endTime))")
-                        .fontWeight(.medium)
-                }
-                
-                Divider()
-                
-                HStack {
-                    Text("Duration")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(formatDuration(shiftDuration))
-                        .fontWeight(.medium)
-                }
-                
-                Divider()
-                
-                HStack {
-                    Text("Break")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(breakDuration == 0 ? "No break" : formatDuration(breakDuration))
-                        .fontWeight(.medium)
-                }
-                
-                Divider()
-                
-                HStack {
-                    Text("Shift Type")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(shiftType.rawValue.capitalized)
-                        .fontWeight(.medium)
-                }
+                Toggle("Use Custom Rate", isOn: $useCustomRate)
+                    .padding(.vertical, 4)
                 
                 if useCustomRate {
                     Divider()
                     
                     HStack {
-                        Text("Custom Rate")
+                        Text("Hourly Rate (£)")
                             .foregroundColor(.secondary)
+                        
                         Spacer()
-                        Text(formatCurrency(hourlyRateOverride ?? 0))
-                            .fontWeight(.medium)
+                        
+                        TextField("Rate", value: $hourlyRateOverride, formatter: currencyFormatter)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            
+            // Payment Status
+            FormCard(title: "Payment Status") {
+                Toggle(isOn: $isPaid) {
+                    HStack {
+                        Text(isPaid ? "Marked as Paid" : "Mark as Paid")
+                        
+                        Spacer()
+                        
+                        if isPaid {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        }
                     }
                 }
-                
-                Divider()
-                
-                HStack {
-                    Text("Total Earnings")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(formatCurrency(shiftEarnings))
-                        .fontWeight(.medium)
-                        .foregroundColor(viewModel.themeColor)
-                }
-                
-                Divider()
-                
-                HStack {
-                    Text("Payment Status")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(isPaid ? "Paid" : "Not Paid")
-                        .fontWeight(.medium)
-                        .foregroundColor(isPaid ? .green : .secondary)
-                }
+            }
+            
+            // Recurring Options
+            FormCard(title: "Recurring Shift") {
+                Toggle("Create Recurring Shift", isOn: $isRecurring)
+                    .padding(.vertical, 5)
                 
                 if isRecurring {
                     Divider()
                     
                     HStack {
-                        Text("Recurring")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("\(recurrenceInterval.rawValue)")
-                            .fontWeight(.medium)
-                    }
-                    
-                    if hasEndDate {
-                        HStack {
-                            Text("Ends on")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text(formatDate(recurrenceEndDate))
-                                .fontWeight(.medium)
-                        }
-                    }
-                }
-                
-                if !notes.isEmpty {
-                    Divider()
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Notes")
+                        Text("Repeat Every")
                             .foregroundColor(.secondary)
                         
-                        Text(notes)
-                            .fontWeight(.medium)
+                        Spacer()
+                        
+                        Picker("", selection: $recurrenceInterval) {
+                            ForEach(RecurrenceInterval.allCases.filter { $0 != .none }, id: \.self) { interval in
+                                Text(interval.rawValue).tag(interval)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                    }
+                    .padding(.vertical, 5)
+                    
+                    Toggle("Set End Date", isOn: $hasEndDate)
+                        .padding(.vertical, 5)
+                    
+                    if hasEndDate {
+                        DatePicker(
+                            "Ends On",
+                            selection: $recurrenceEndDate,
+                            in: date...,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(CompactDatePickerStyle())
                     }
                 }
             }
-            .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(15)
-            .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
             
-            // Add Shift Button
+            // Earnings summary (updated)
+            ShiftSummaryCard(
+                duration: shiftDuration,
+                hourlyRate: effectiveHourlyRate,
+                earnings: shiftEarnings,
+                themeColor: viewModel.themeColor
+            )
+        }
+    }
+    
+    // Step 3: Review
+    private var reviewSection: some View {
+        VStack(spacing: 20) {
+            // Card with all the details for review
+            FormCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Job info
+                    if let jobId = selectedJobId, let job = viewModel.jobs.first(where: { $0.id == jobId }) {
+                        ReviewRow(title: "Job", value: job.name, icon: "briefcase.fill")
+                    }
+                    
+                    // Date & Time
+                    ReviewRow(title: "Date", value: formatDate(date), icon: "calendar")
+                    ReviewRow(title: "Time", value: "\(formatTime(startTime)) - \(formatTime(endTime))", icon: "clock")
+                    ReviewRow(title: "Duration", value: formatDuration(shiftDuration), icon: "hourglass")
+                    ReviewRow(title: "Break", value: breakDuration == 0 ? "No break" : formatDuration(breakDuration), icon: "cup.and.saucer")
+                    
+                    // Payment details
+                    if useCustomRate {
+                        ReviewRow(
+                            title: "Custom Rate",
+                            value: formatCurrency(hourlyRateOverride ?? 0),
+                            icon: "dollarsign.square"
+                        )
+                    }
+                    
+                    ReviewRow(
+                        title: "Total Earnings",
+                        value: formatCurrency(shiftEarnings),
+                        icon: "banknote",
+                        valueColor: viewModel.themeColor
+                    )
+                    
+                    // Payment status
+                    ReviewRow(
+                        title: "Payment Status",
+                        value: isPaid ? "Paid" : "Not Paid",
+                        icon: isPaid ? "checkmark.seal.fill" : "checkmark.seal",
+                        valueColor: isPaid ? .green : .secondary
+                    )
+                    
+                    // Recurring information
+                    if isRecurring {
+                        Divider().padding(.vertical, 4)
+                        
+                        Text("Recurring Details")
+                            .font(.headline)
+                            .padding(.top, 4)
+                        
+                        ReviewRow(
+                            title: "Frequency",
+                            value: recurrenceInterval.rawValue,
+                            icon: "repeat"
+                        )
+                        
+                        if hasEndDate {
+                            ReviewRow(
+                                title: "Ends On",
+                                value: formatDate(recurrenceEndDate),
+                                icon: "calendar.badge.clock"
+                            )
+                        } else {
+                            ReviewRow(
+                                title: "End Date",
+                                value: "No end date",
+                                icon: "infinity"
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Notes section moved here
+            FormCard(title: "Notes") {
+                TextEditor(text: $notes)
+                    .frame(height: 80)
+                    .padding(4)
+                    .background(Color(.systemGray6).opacity(0.5))
+                    .cornerRadius(8)
+                    .placeholderOverlay(notes.isEmpty ? "Add any additional details about this shift (optional)" : nil)
+            }
+            
+            // Save Button
             Button(action: saveShift) {
                 HStack {
                     Spacer()
+                    Image(systemName: "checkmark.circle.fill")
                     Text("Add Shift")
                         .font(.headline)
-                        .foregroundColor(.white)
                     Spacer()
                 }
                 .padding()
                 .background(isFormValid() ? viewModel.themeColor : Color.gray)
                 .cornerRadius(15)
+                .foregroundColor(.white)
                 .shadow(color: (isFormValid() ? viewModel.themeColor : Color.gray).opacity(0.4), radius: 8, x: 0, y: 4)
             }
             .disabled(!isFormValid())
-            .padding(.top, 20)
+            .padding(.vertical)
         }
     }
     
-    // Bottom navigation area with progress bar and buttons
-    private var bottomNavArea: some View {
+    // MARK: - Navigation Footer
+    
+    private var navigationFooter: some View {
         VStack(spacing: 0) {
             Divider()
             
-            // Updated progress bar and navigation buttons
-            HStack(spacing: 16) {
+            HStack(spacing: 20) {
                 // Back button
-                if currentStep != .timing {
+                if currentStep != .basics {
                     Button(action: goToPreviousStep) {
-                        HStack {
-                            Image(systemName: "chevron.left")
-                            Text("Back")
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(10)
-                        .foregroundColor(viewModel.themeColor)
+                        Label("Back", systemImage: "chevron.left")
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(10)
+                            .foregroundColor(viewModel.themeColor)
                     }
                 } else {
-                    // Placeholder for alignment
-                    Spacer()
-                        .frame(width: 85)
+                    Spacer().frame(width: 85)
                 }
                 
-                // Progress bar
-                ProgressBar(currentStep: currentStep)
-                    .frame(maxWidth: .infinity)
+                Spacer()
                 
-                // Next/Done button
+                // Progress indicators
+                HStack(spacing: 8) {
+                    ForEach(FormStep.allCases, id: \.self) { step in
+                        Circle()
+                            .fill(step.rawValue <= currentStep.rawValue ? viewModel.themeColor : Color.gray.opacity(0.3))
+                            .frame(width: step == currentStep ? 12 : 8, height: step == currentStep ? 12 : 8)
+                    }
+                }
+                
+                Spacer()
+                
+                // Next button
                 if currentStep != .review {
                     Button(action: goToNextStep) {
-                        HStack {
-                            Text("Next")
-                            Image(systemName: "chevron.right")
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
-                        .background(canMoveToNextStep() ? viewModel.themeColor.opacity(0.9) : Color.gray.opacity(0.3))
-                        .cornerRadius(10)
-                        .foregroundColor(.white)
+                        Label("Next", systemImage: "chevron.right")
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(canMoveToNextStep() ? viewModel.themeColor : Color.gray.opacity(0.3))
+                            .cornerRadius(10)
+                            .foregroundColor(.white)
                     }
                     .disabled(!canMoveToNextStep())
                 } else {
-                    // Button to add shift
                     Button(action: saveShift) {
-                        HStack {
-                            Text("Save")
-                            Image(systemName: "checkmark")
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
-                        .background(isFormValid() ? viewModel.themeColor.opacity(0.9) : Color.gray.opacity(0.3))
-                        .cornerRadius(10)
-                        .foregroundColor(.white)
+                        Label("Save", systemImage: "checkmark")
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(isFormValid() ? viewModel.themeColor : Color.gray.opacity(0.3))
+                            .cornerRadius(10)
+                            .foregroundColor(.white)
                     }
                     .disabled(!isFormValid())
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 10)
-            .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+            .padding(.vertical, 12)
+            .background(Color(.systemBackground))
         }
-    }
-    
-    // MARK: - Helper Views
-    
-    private func emptyStateView(message: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.circle")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            
-            Text(message)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
     }
     
     // MARK: - Navigation Logic
@@ -792,13 +560,12 @@ struct AddShiftView: View {
     private func goToNextStep() {
         withAnimation {
             switch currentStep {
-            case .timing:
+            case .basics:
                 currentStep = .payment
             case .payment:
                 currentStep = .review
             case .review:
-                // Should never happen
-                break
+                break // Should never happen
             }
         }
     }
@@ -806,11 +573,10 @@ struct AddShiftView: View {
     private func goToPreviousStep() {
         withAnimation {
             switch currentStep {
-            case .timing:
-                // Should never happen
-                break
+            case .basics:
+                break // Should never happen
             case .payment:
-                currentStep = .timing
+                currentStep = .basics
             case .review:
                 currentStep = .payment
             }
@@ -819,10 +585,11 @@ struct AddShiftView: View {
     
     private func canMoveToNextStep() -> Bool {
         switch currentStep {
-        case .timing:
-            return shiftDuration > 0
+        case .basics:
+            return selectedJobId != nil && shiftDuration > 0
         case .payment:
-            return selectedJobId != nil
+            let customRateValid = !useCustomRate || (hourlyRateOverride ?? 0) > 0
+            return selectedJobId != nil && customRateValid
         case .review:
             return isFormValid()
         }
@@ -833,7 +600,7 @@ struct AddShiftView: View {
             return false
         }
         
-        // If custom rate is used, validate it
+        // Validate custom rate if used
         if useCustomRate && (hourlyRateOverride == nil || hourlyRateOverride! <= 0) {
             return false
         }
@@ -857,14 +624,14 @@ struct AddShiftView: View {
             return
         }
         
-        // Create initial shift
+        // Create shift
         let newShift = WorkShift(
             jobId: jobId,
             date: date,
             startTime: combineDateTime(date: date, time: startTime),
             endTime: combineDateTime(date: endTime < startTime ? Calendar.current.date(byAdding: .day, value: 1, to: date)! : date, time: endTime),
             breakDuration: breakDuration,
-            shiftType: shiftType,
+            shiftType: .regular, // Default to regular shift type since we removed the picker
             notes: notes,
             isPaid: isPaid,
             hourlyRateOverride: useCustomRate ? hourlyRateOverride : nil,
@@ -890,23 +657,17 @@ struct AddShiftView: View {
         
         // Create recurring shifts
         var shiftsToAdd: [WorkShift] = []
-        
         var currentDate = baseShift.date
         let calendar = Calendar.current
         
         // Logic for different recurrence intervals
         let dateIncrement: DateComponents = {
             switch recurrenceInterval {
-            case .daily:
-                return DateComponents(day: 1)
-            case .weekly:
-                return DateComponents(day: 7)
-            case .biweekly:
-                return DateComponents(day: 14)
-            case .monthly:
-                return DateComponents(month: 1)
-            case .none:
-                return DateComponents()
+            case .daily: return DateComponents(day: 1)
+            case .weekly: return DateComponents(day: 7)
+            case .biweekly: return DateComponents(day: 14)
+            case .monthly: return DateComponents(month: 1)
+            case .none: return DateComponents()
             }
         }()
         
@@ -958,14 +719,6 @@ struct AddShiftView: View {
         return calendar.date(from: combinedComponents)!
     }
     
-    private func getMultiplierText(for shiftType: ShiftType) -> String {
-        switch shiftType {
-        case .regular: return "×1.0"
-        case .overtime: return "×1.5"
-        case .holiday: return "×2.0"
-        }
-    }
-    
     private var currencyFormatter: NumberFormatter {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -1008,66 +761,139 @@ struct AddShiftView: View {
 
 // MARK: - Supporting Views
 
-// Progress bar for step-by-step form flow (3 steps)
-struct ProgressBar: View {
+struct StepIndicator: View {
     var currentStep: AddShiftView.FormStep
     
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<3) { index in
-                let stepCompleted = stepValue(for: currentStep) > index
-                let isCurrentStep = stepValue(for: currentStep) == index
+        HStack(spacing: 0) {
+            ForEach(AddShiftView.FormStep.allCases, id: \.self) { step in
+                VStack(spacing: 4) {
+                    Image(systemName: step.systemImage)
+                        .font(.system(size: step == currentStep ? 24 : 18))
+                        .foregroundColor(step == currentStep ? .blue : .gray)
+                    
+                    Text(step.title)
+                        .font(.caption)
+                        .fontWeight(step == currentStep ? .semibold : .regular)
+                        .foregroundColor(step == currentStep ? .blue : .gray)
+                }
+                .frame(maxWidth: .infinity)
                 
-                Circle()
-                    .fill(
-                        stepCompleted || isCurrentStep
-                            ? Color.blue
-                            : Color.gray.opacity(0.3)
-                    )
-                    .frame(width: isCurrentStep ? 12 : 8, height: isCurrentStep ? 12 : 8)
-                    .overlay(
-                        Circle()
-                            .stroke(isCurrentStep ? Color.blue : Color.clear, lineWidth: 2)
-                            .scaleEffect(1.5)
-                    )
+                if step != AddShiftView.FormStep.allCases.last {
+                    Rectangle()
+                        .fill(step.rawValue < currentStep.rawValue ? Color.blue : Color.gray.opacity(0.3))
+                        .frame(height: 2)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, -10)
+                }
             }
         }
     }
-    
-    private func stepValue(for step: AddShiftView.FormStep) -> Int {
-        switch step {
-        case .timing: return 0
-        case .payment: return 1
-        case .review: return 2
-        }
-    }
 }
 
-// Type button for selecting shift type
-struct TypeButton: View {
-    var title: String
-    var isSelected: Bool
-    var action: () -> Void
-    
-    @EnvironmentObject var viewModel: WorkHoursViewModel
+struct FormCard<Content: View>: View {
+    var title: String?
+    @ViewBuilder var content: () -> Content
     
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: isSelected ? .bold : .regular))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(isSelected ? viewModel.themeColor : Color(.systemGray6))
-                )
-                .foregroundColor(isSelected ? .white : .primary)
+        VStack(alignment: .leading, spacing: 10) {
+            if let title = title {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+            }
+            
+            ZStack {
+                RoundedRectangle(cornerRadius: 15)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    content()
+                }
+                .padding()
+            }
         }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
-// Job selection row with details
+struct ShiftSummaryCard: View {
+    let duration: Double
+    let hourlyRate: Double
+    let earnings: Double
+    let themeColor: Color
+    
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 15)
+                .fill(themeColor.opacity(0.1))
+                .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+            
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Duration")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(alignment: .bottom, spacing: 4) {
+                        formatDurationView(duration)
+                        
+                        Image(systemName: "clock")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Total Earnings")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    formatEarningsView(earnings, themeColor: themeColor)
+                }
+            }
+            .padding()
+        }
+    }
+    
+    private func formatDurationView(_ hours: Double) -> some View {
+        let totalMinutes = Int(hours * 60)
+        let hoursValue = totalMinutes / 60
+        let minutesValue = totalMinutes % 60
+        
+        return (
+            Text("\(hoursValue)")
+                .font(.title3)
+                .fontWeight(.bold) +
+            Text("h ")
+                .font(.subheadline) +
+            Text("\(minutesValue)")
+                .font(.title3)
+                .fontWeight(.bold) +
+            Text("m")
+                .font(.subheadline)
+        )
+    }
+    
+    private func formatEarningsView(_ value: Double, themeColor: Color) -> some View {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "£"
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+        
+        let formattedValue = formatter.string(from: NSNumber(value: value)) ?? "£0.00"
+        
+        return Text(formattedValue)
+            .font(.title2)
+            .fontWeight(.bold)
+            .foregroundColor(themeColor)
+    }
+}
+
 struct JobSelectionRow: View {
     let job: Job
     let isSelected: Bool
@@ -1107,17 +933,76 @@ struct JobSelectionRow: View {
                         .font(.title3)
                 }
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(isSelected ? viewModel.themeColor.opacity(0.1) : Color(.systemBackground))
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? viewModel.themeColor : Color.gray.opacity(0.2), lineWidth: 1)
-            )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ReviewRow: View {
+    var title: String
+    var value: String
+    var icon: String
+    var valueColor: Color? = nil
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .frame(width: 20)
+                .foregroundColor(.secondary)
+            
+            Text(title)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .fontWeight(.medium)
+                .foregroundColor(valueColor)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct EmptyStateView: View {
+    var message: String
+    var systemImage: String
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+            
+            Text(message)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+    }
+}
+
+// MARK: - Helper Views
+
+extension View {
+    func placeholderOverlay(_ text: String?) -> some View {
+        ZStack(alignment: .topLeading) {
+            self
+            
+            if let text = text {
+                Text(text)
+                    .font(.system(.body))
+                    .foregroundColor(.secondary.opacity(0.6))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 12)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
