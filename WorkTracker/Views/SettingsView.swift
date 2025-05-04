@@ -1,10 +1,3 @@
-//
-//  SettingsView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
 import SwiftUI
 
 struct SettingsView: View {
@@ -102,6 +95,20 @@ struct SettingsView: View {
                 // Preferences section
                 settingsSection(title: "Preferences", icon: "gearshape.fill") {
                     VStack(alignment: .leading, spacing: 16) {
+                        // Default time range picker
+                        HStack {
+                            Text("Default Time Range")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Picker("", selection: $defaultTimeRange) {
+                                ForEach(TimeRange.allCases, id: \.self) { range in
+                                    Text(range.title).tag(range.rawValue)
+                                }
+                            }
+                            .pickerStyle(MenuPickerStyle())
+                        }
                         
                         // Weekend inclusion toggle
                         HStack {
@@ -240,7 +247,7 @@ struct SettingsView: View {
                             Text("Last Updated")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("April 18, 2025")
+                            Text("April 23, 2025")
                         }
                         
                         Button(action: {

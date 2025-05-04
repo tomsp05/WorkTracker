@@ -1,10 +1,3 @@
-//
-//  JobDetailView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
 import SwiftUI
 import Charts
 
@@ -85,8 +78,11 @@ struct JobDetailView: View {
                 // Job overview card
                 jobOverviewCard
                 
-                // Time period selector
-                timeRangeSelector
+                // Time period selector - wrapped in ScrollView for better handling of Year to Date
+                ScrollView(.horizontal, showsIndicators: false) {
+                    timeRangeSelector
+                        .padding(.horizontal)
+                }
                 
                 // Statistics cards
                 statisticsCardsSection
@@ -466,6 +462,38 @@ struct JobDetailView: View {
                     
                     weekStart = nextWeekStart
                 }
+            }
+            
+        case .yearToDate:
+            // For year to date view, monthly data
+            let monthFormatter = DateFormatter()
+            monthFormatter.dateFormat = "MMM" // Month abbreviation (Jan, Feb, etc.)
+            
+            // Group by month
+            var components = calendar.dateComponents([.year, .month], from: startDate)
+            
+            while let currentMonthStart = calendar.date(from: components), currentMonthStart <= endDate {
+                // Get next month
+                components.month! += 1
+                let nextMonthStart = calendar.date(from: components) ?? endDate
+                
+                // Filter shifts for this month
+                let monthlyShifts = jobShifts.filter {
+                    $0.date >= currentMonthStart && $0.date < nextMonthStart
+                }
+                
+                let value: Double
+                if type == .earnings {
+                    value = monthlyShifts.reduce(0) { $0 + $1.earnings }
+                } else {
+                    value = monthlyShifts.reduce(0) { $0 + $1.duration }
+                }
+                
+                chartData.append(ChartData(
+                    id: UUID(),
+                    label: monthFormatter.string(from: currentMonthStart),
+                    value: value
+                ))
             }
         }
         

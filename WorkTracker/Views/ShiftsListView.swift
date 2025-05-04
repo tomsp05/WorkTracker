@@ -1,10 +1,3 @@
-//
-//  ShiftsListView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
 import SwiftUI
 
 struct ShiftsListView: View {
@@ -205,14 +198,16 @@ struct ShiftsListView: View {
     
     private var filterOptions: some View {
         VStack(spacing: 12) {
-            // Time range picker
-            Picker("Time Range", selection: $timeRange) {
-                ForEach(TimeRange.allCases, id: \.self) { range in
-                    Text(range.title).tag(range)
+            // Time range picker with scrollable style to accommodate the new Year to Date option
+            ScrollView(.horizontal, showsIndicators: false) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(TimeRange.allCases, id: \.self) { range in
+                        Text(range.title).tag(range)
+                    }
                 }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
             }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
             
             // Sort options
             HStack {

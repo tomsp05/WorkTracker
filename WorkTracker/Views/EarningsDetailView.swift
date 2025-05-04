@@ -1,10 +1,3 @@
-//
-//  EarningsDetailView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
 import SwiftUI
 import Charts
 
@@ -301,6 +294,10 @@ struct EarningsDetailView: View {
         case .thisMonth:
             // Weekly breakdown for this month
             return generateWeeklyChartData(from: startDate, to: endDate, calculating: .earnings)
+            
+        case .yearToDate:
+            // Monthly breakdown for year to date
+            return generateMonthlyChartData(from: startDate, to: endDate, calculating: .earnings)
         }
     }
     
@@ -319,6 +316,10 @@ struct EarningsDetailView: View {
         case .thisMonth:
             // Weekly breakdown for this month
             return generateWeeklyChartData(from: startDate, to: endDate, calculating: .hours)
+            
+        case .yearToDate:
+            // Monthly breakdown for year to date
+            return generateMonthlyChartData(from: startDate, to: endDate, calculating: .hours)
         }
     }
     
@@ -451,6 +452,45 @@ struct EarningsDetailView: View {
                 
                 weekStart = nextWeekStart
             }
+        }
+        
+        return chartData
+    }
+    
+    private func generateMonthlyChartData(from startDate: Date, to endDate: Date, calculating type: ChartCalculationType) -> [ChartData] {
+        let calendar = Calendar.current
+        var chartData: [ChartData] = []
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM" // Month abbreviation (Jan, Feb, etc.)
+        
+        // Start with the first day of the month in the start date
+        var components = calendar.dateComponents([.year, .month], from: startDate)
+        
+        // Create a date for each month from start to end
+        while let monthStart = calendar.date(from: components), monthStart <= endDate {
+            // Calculate the first day of the next month
+            components.month! += 1
+            let nextMonthStart = calendar.date(from: components)!
+            
+            // Get shifts for this month
+            let monthShifts = viewModel.shifts.filter {
+                $0.date >= monthStart && $0.date < nextMonthStart && $0.date <= endDate
+            }
+            
+            // Calculate value
+            let value: Double
+            if type == .earnings {
+                // Use our correct earnings calculation
+                value = monthShifts.reduce(0) { $0 + calculateShiftEarnings($1) }
+            } else {
+                value = monthShifts.reduce(0) { $0 + $1.duration }
+            }
+            
+            chartData.append(ChartData(
+                id: UUID(),
+                label: formatter.string(from: monthStart),
+                value: value
+            ))
         }
         
         return chartData

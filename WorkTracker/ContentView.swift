@@ -387,6 +387,7 @@ enum TimeRange: String, CaseIterable {
     case thisWeek = "This Week"
     case thisMonth = "This Month"
     case last30Days = "Last 30 Days"
+    case yearToDate = "Year to Date"
     
     var title: String {
         return self.rawValue
@@ -407,6 +408,11 @@ enum TimeRange: String, CaseIterable {
             startDate = calendar.date(from: components) ?? endDate.addingTimeInterval(-30*24*60*60)
         case .last30Days:
             startDate = calendar.date(byAdding: .day, value: -30, to: endDate) ?? endDate.addingTimeInterval(-30*24*60*60)
+        case .yearToDate:
+            var components = calendar.dateComponents([.year], from: endDate)
+            components.month = 1
+            components.day = 1
+            startDate = calendar.date(from: components) ?? endDate.addingTimeInterval(-365*24*60*60)
         }
         
         return (startDate, endDate)
