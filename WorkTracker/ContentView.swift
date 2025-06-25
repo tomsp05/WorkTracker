@@ -280,9 +280,6 @@ struct ContentView: View {
                     
                     // Recent shifts section
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Recent Shifts")
-                            .font(.headline)
-                            .padding(.horizontal)
                         
                         if recentShifts.isEmpty {
                             VStack(spacing: 12) {
