@@ -1,0 +1,56 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.19914,0.40049,0.70094,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-6.png",
+          "name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-6"
+        },
+        {
+          "image-name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-5.png",
+          "name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-5"
+        },
+        {
+          "image-name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-4.png",
+          "name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-4"
+        },
+        {
+          "image-name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-3.png",
+          "name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-3"
+        },
+        {
+          "image-name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-2.png",
+          "name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-2"
+        },
+        {
+          "image-name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-1.png",
+          "name" : "_com.apple.Foundation.NSItemProvider.OOoc5X-1"
+        }
+      ],
+      "position" : {
+        "scale" : 1.15,
+        "translation-in-points" : [
+          1.5703125,
+          25
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.25
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
