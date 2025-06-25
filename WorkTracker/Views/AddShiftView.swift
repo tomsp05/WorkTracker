@@ -146,6 +146,19 @@ struct AddShiftView: View {
                 }
             }
             
+            // Preset Shifts
+            if let jobId = selectedJobId, let job = viewModel.jobs.first(where: { $0.id == jobId }), !job.presetShifts.isEmpty {
+                FormCard(title: "Preset Shifts") {
+                    ForEach(job.presetShifts) { preset in
+                        PresetShiftRow(preset: preset) {
+                            self.startTime = preset.startTime
+                            self.endTime = preset.endTime
+                            self.breakDuration = preset.breakDuration
+                        }
+                    }
+                }
+            }
+            
             // Date & Time
             FormCard(title: "Date & Time") {
                 // Date picker
@@ -760,6 +773,45 @@ struct AddShiftView: View {
 }
 
 // MARK: - Supporting Views
+
+struct PresetShiftRow: View {
+    let preset: PresetShift
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(preset.name).font(.headline)
+                    Text("\(formatTime(preset.startTime)) - \(formatTime(preset.endTime))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Text(formatDuration(preset.duration))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
+    }
+    
+    private func formatDuration(_ hours: Double) -> String {
+        let totalMinutes = Int(hours * 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+    }
+}
+
 
 struct StepIndicator: View {
     var currentStep: AddShiftView.FormStep

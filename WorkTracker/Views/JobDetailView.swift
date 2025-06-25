@@ -340,7 +340,10 @@ struct JobDetailView: View {
                 }
                 
                 if jobShifts.count > 5 {
-                    NavigationLink(destination: ShiftsListView(filterJobId: job.id).environmentObject(viewModel)) {
+                    // Create a filter state with the current job's ID pre-selected
+                    let filterState = ShiftFilterState(selectedJobIds: [job.id])
+                    
+                    NavigationLink(destination: ShiftsListView(initialFilterState: filterState).environmentObject(viewModel)) {
                         Text("See All Shifts")
                             .font(.headline)
                             .foregroundColor(jobColor)

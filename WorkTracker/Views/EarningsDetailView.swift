@@ -4,20 +4,86 @@ import Charts
 struct EarningsDetailView: View {
     @EnvironmentObject var viewModel: WorkHoursViewModel
     @Environment(\.colorScheme) var colorScheme
-    @Binding var timeRange: TimeRange
     
+    // New filter state
+    @State private var filterState = AnalyticsFilterState()
+
     // For the charts
     @State private var selectedChartTab: ChartType = .earnings
     
+    // MARK: - Computed Properties
+    
+    private var dateRange: (start: Date, end: Date) {
+        var startDate: Date
+        var endDate: Date
+        let calendar = Calendar.current
+        let now = Date()
+        
+        switch filterState.timeFilter {
+        case .week:
+            var weekCal = calendar
+            weekCal.firstWeekday = 2 // Monday
+            guard let thisWeekStart = weekCal.dateInterval(of: .weekOfYear, for: now)?.start else {
+                endDate = now
+                startDate = weekCal.date(byAdding: .day, value: -6, to: now)!
+                break
+            }
+            startDate = weekCal.date(byAdding: .weekOfYear, value: filterState.timeOffset, to: thisWeekStart)!
+            endDate = weekCal.date(byAdding: .day, value: 6, to: startDate)!
+        case .month:
+            guard let thisMonthStart = calendar.dateInterval(of: .month, for: now)?.start else {
+                endDate = now
+                startDate = calendar.date(byAdding: .day, value: -29, to: now)!
+                break
+            }
+            startDate = calendar.date(byAdding: .month, value: filterState.timeOffset, to: thisMonthStart)!
+            if filterState.timeOffset == 0 {
+                endDate = now
+            } else {
+                let nextMonthStart = calendar.date(byAdding: .month, value: 1, to: startDate)!
+                endDate = nextMonthStart.addingTimeInterval(-1)
+            }
+        case .yearToDate:
+            endDate = now.addingTimeInterval(Double(filterState.timeOffset) * (365 * 24 * 60 * 60))
+            var comps = calendar.dateComponents([.year], from: endDate)
+            comps.month = 1
+            comps.day = 1
+            startDate = calendar.date(from: comps)!
+        case .year:
+            endDate = now.addingTimeInterval(Double(filterState.timeOffset) * (365 * 24 * 60 * 60))
+            startDate = calendar.date(byAdding: .year, value: -1, to: endDate)!
+        }
+        
+        return (start: startDate, end: endDate)
+    }
+    
+    private var timePeriodTitle: String {
+        let formatter = DateFormatter()
+        
+        switch filterState.timeFilter {
+        case .week:
+            formatter.dateFormat = "MMM d"
+            return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
+        case .month:
+            formatter.dateFormat = "MMMM yyyy"
+            return formatter.string(from: dateRange.start)
+        case .yearToDate:
+            formatter.dateFormat = "yyyy"
+            let year = formatter.string(from: dateRange.end)
+            return "\(year) YTD"
+        case .year:
+            formatter.dateFormat = "yyyy"
+            return formatter.string(from: dateRange.start)
+        }
+    }
+    
     // For the detail stats
     private var totalEarnings: Double {
-        let (startDate, endDate) = timeRange.dateRange
-        return viewModel.totalEarnings(from: startDate, to: endDate)
+        viewModel.totalEarnings(from: dateRange.start, to: dateRange.end)
     }
     
     private var totalHours: Double {
-        let (startDate, endDate) = timeRange.dateRange
-        return viewModel.totalHours(from: startDate, to: endDate)
+        viewModel.totalHours(from: dateRange.start, to: dateRange.end)
     }
     
     private var averageHourlyRate: Double {
@@ -28,8 +94,7 @@ struct EarningsDetailView: View {
     }
     
     private var totalShifts: Int {
-        let (startDate, endDate) = timeRange.dateRange
-        return viewModel.shifts.filter { $0.date >= startDate && $0.date <= endDate }.count
+        viewModel.shifts.filter { $0.date >= dateRange.start && $0.date <= dateRange.end }.count
     }
     
     // Helper function to calculate earnings for a shift
@@ -58,11 +123,10 @@ struct EarningsDetailView: View {
     
     // Job breakdown for the period
     private var jobBreakdown: [(job: Job, hours: Double, earnings: Double)] {
-        let (startDate, endDate) = timeRange.dateRange
         var breakdown: [(job: Job, hours: Double, earnings: Double)] = []
         
         for job in viewModel.jobs where job.isActive {
-            let jobShifts = viewModel.shifts.filter { $0.jobId == job.id && $0.date >= startDate && $0.date <= endDate }
+            let jobShifts = viewModel.shifts.filter { $0.jobId == job.id && $0.date >= dateRange.start && $0.date <= dateRange.end }
             let hours = jobShifts.reduce(0) { $0 + $1.duration }
             
             // Calculate correct earnings for each shift
@@ -90,6 +154,9 @@ struct EarningsDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Time navigation header
+                timeNavigationView
+                
                 // Summary cards
                 statisticCardsSection
                 
@@ -98,9 +165,6 @@ struct EarningsDetailView: View {
                 
                 // Job breakdown section
                 jobBreakdownSection
-                
-                // Time period selector
-                timeRangeSection
             }
             .padding(.horizontal)
             .padding(.bottom, 20)
@@ -110,6 +174,50 @@ struct EarningsDetailView: View {
     }
     
     // MARK: - View Sections
+    
+    private var timeNavigationView: some View {
+        VStack(spacing: 12) {
+            Picker("Time Filter", selection: $filterState.timeFilter) {
+                ForEach(AnalyticsTimeFilter.allCases, id: \.self) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            
+            HStack {
+                Button(action: { filterState.timeOffset -= 1 }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(viewModel.themeColor)
+                        .font(.system(size: 16, weight: .medium))
+                        .padding(8)
+                        .background(Circle().fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                }
+                
+                Spacer()
+                
+                Text(timePeriodTitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                
+                Spacer()
+                
+                Button(action: { if filterState.timeOffset < 0 { filterState.timeOffset += 1 } }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(viewModel.themeColor)
+                        .font(.system(size: 16, weight: .medium))
+                        .padding(8)
+                        .background(Circle().fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                }
+                .disabled(filterState.timeOffset == 0).opacity(filterState.timeOffset == 0 ? 0.5 : 1.0)
+            }
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(15)
+        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    }
     
     private var statisticCardsSection: some View {
         VStack(spacing: 16) {
@@ -236,24 +344,6 @@ struct EarningsDetailView: View {
         .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
     
-    private var timeRangeSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Time Period")
-                .font(.headline)
-            
-            Picker("Time Range", selection: $timeRange) {
-                ForEach(TimeRange.allCases, id: \.self) { range in
-                    Text(range.title).tag(range)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-        }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(15)
-        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-    }
-    
     // MARK: - Helper Methods
     
     private func formatCurrency(_ value: Double) -> String {
@@ -280,104 +370,27 @@ struct EarningsDetailView: View {
     
     // Chart data generation based on time range
     private func generateEarningsChartData() -> [ChartData] {
-        let (startDate, endDate) = timeRange.dateRange
-        
-        switch timeRange {
-        case .today:
-            // Hourly breakdown for today
-            return generateHourlyChartData(calculating: .earnings)
-            
-        case .thisWeek, .last30Days:
+        switch filterState.timeFilter {
+        case .week, .month:
             // Daily breakdown
-            return generateDailyChartData(from: startDate, to: endDate, calculating: .earnings)
+            return generateDailyChartData(from: dateRange.start, to: dateRange.end, calculating: .earnings)
             
-        case .thisMonth:
-            // Weekly breakdown for this month
-            return generateWeeklyChartData(from: startDate, to: endDate, calculating: .earnings)
-            
-        case .yearToDate:
-            // Monthly breakdown for year to date
-            return generateMonthlyChartData(from: startDate, to: endDate, calculating: .earnings)
+        case .yearToDate, .year:
+            // Monthly breakdown
+            return generateMonthlyChartData(from: dateRange.start, to: dateRange.end, calculating: .earnings)
         }
     }
     
     private func generateHoursChartData() -> [ChartData] {
-        let (startDate, endDate) = timeRange.dateRange
-        
-        switch timeRange {
-        case .today:
-            // Hourly breakdown for today
-            return generateHourlyChartData(calculating: .hours)
-            
-        case .thisWeek, .last30Days:
+        switch filterState.timeFilter {
+        case .week, .month:
             // Daily breakdown
-            return generateDailyChartData(from: startDate, to: endDate, calculating: .hours)
+            return generateDailyChartData(from: dateRange.start, to: dateRange.end, calculating: .hours)
             
-        case .thisMonth:
-            // Weekly breakdown for this month
-            return generateWeeklyChartData(from: startDate, to: endDate, calculating: .hours)
-            
-        case .yearToDate:
-            // Monthly breakdown for year to date
-            return generateMonthlyChartData(from: startDate, to: endDate, calculating: .hours)
+        case .yearToDate, .year:
+            // Monthly breakdown
+            return generateMonthlyChartData(from: dateRange.start, to: dateRange.end, calculating: .hours)
         }
-    }
-    
-    private func generateHourlyChartData(calculating type: ChartCalculationType) -> [ChartData] {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-        var chartData: [ChartData] = []
-        
-        // Group shifts by hour
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ha"
-        
-        // Create hour slots for the full day (0-23)
-        for hour in 0..<24 {
-            if let hourDate = calendar.date(byAdding: .hour, value: hour, to: startOfDay) {
-                let hourEnd = calendar.date(byAdding: .hour, value: 1, to: hourDate)!
-                
-                // Filter shifts that were active during this hour
-                let hourShifts = viewModel.shifts.filter { shift in
-                    shift.startTime < hourEnd && shift.endTime > hourDate
-                }
-                
-                // Calculate value based on type
-                let value: Double
-                if type == .earnings {
-                    value = hourShifts.reduce(0) { sum, shift in
-                        // Calculate proportional earnings for this hour
-                        let totalShiftMinutes = shift.endTime.timeIntervalSince(shift.startTime) / 60
-                        let hourStartOverlap = max(hourDate, shift.startTime)
-                        let hourEndOverlap = min(hourEnd, shift.endTime)
-                        let overlapMinutes = hourEndOverlap.timeIntervalSince(hourStartOverlap) / 60
-                        let proportionOfShift = totalShiftMinutes > 0 ? overlapMinutes / totalShiftMinutes : 0
-                        
-                        // Use our correct earnings calculation
-                        let fullShiftEarnings = calculateShiftEarnings(shift)
-                        return sum + (fullShiftEarnings * proportionOfShift)
-                    }
-                } else {
-                    // Hours calculation - add up overlapping time
-                    value = hourShifts.reduce(0) { sum, shift in
-                        let hourStartOverlap = max(hourDate, shift.startTime)
-                        let hourEndOverlap = min(hourEnd, shift.endTime)
-                        let overlapHours = hourEndOverlap.timeIntervalSince(hourStartOverlap) / 3600
-                        return sum + overlapHours
-                    }
-                }
-                
-                if value > 0 {
-                    chartData.append(ChartData(
-                        id: UUID(),
-                        label: formatter.string(from: hourDate),
-                        value: value
-                    ))
-                }
-            }
-        }
-        
-        return chartData
     }
     
     private func generateDailyChartData(from startDate: Date, to endDate: Date, calculating type: ChartCalculationType) -> [ChartData] {
@@ -411,47 +424,6 @@ struct EarningsDetailView: View {
             ))
             
             currentDate = nextDate
-        }
-        
-        return chartData
-    }
-    
-    private func generateWeeklyChartData(from startDate: Date, to endDate: Date, calculating type: ChartCalculationType) -> [ChartData] {
-        let calendar = Calendar.current
-        var chartData: [ChartData] = []
-        let formatter = DateFormatter()
-        formatter.dateFormat = "'Week' w"
-        
-        // Use dateComponents to get start of week properly - fixes the calendar warning
-        let weekDateComponents = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: startDate)
-        if let currentWeekStart = calendar.date(from: weekDateComponents) {
-            var weekStart = currentWeekStart
-            
-            while weekStart <= endDate {
-                let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart)!
-                
-                // Get shifts for this week
-                let weekShifts = viewModel.shifts.filter {
-                    $0.date >= weekStart && $0.date < nextWeekStart
-                }
-                
-                // Calculate value
-                let value: Double
-                if type == .earnings {
-                    // Use our correct earnings calculation
-                    value = weekShifts.reduce(0) { $0 + calculateShiftEarnings($1) }
-                } else {
-                    value = weekShifts.reduce(0) { $0 + $1.duration }
-                }
-                
-                chartData.append(ChartData(
-                    id: UUID(),
-                    label: formatter.string(from: weekStart),
-                    value: value
-                ))
-                
-                weekStart = nextWeekStart
-            }
         }
         
         return chartData

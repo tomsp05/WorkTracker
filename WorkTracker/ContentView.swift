@@ -58,58 +58,6 @@ struct ContentView: View {
         return sortedGroups.map { (date: $0.0, shifts: $0.1) }
     }
     
-    // Format currency (£)
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "£"
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
-    }
-    
-    // Format hours
-    private func formatHours(_ hours: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 1
-        formatter.maximumFractionDigits = 1
-        
-        guard let formattedHours = formatter.string(from: NSNumber(value: hours)) else {
-            return "\(hours)h"
-        }
-        
-        return "\(formattedHours)h"
-    }
-    
-    // Format date
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
-    }
-    
-    // Format week heading
-    private func formattedWeek(_ weekStartDate: Date) -> String {
-        let calendar = Calendar.current
-        let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate)!
-        
-        let startFormatter = DateFormatter()
-        let endFormatter = DateFormatter()
-        
-        // If same month, only show day number for start date
-        if calendar.component(.month, from: weekStartDate) == calendar.component(.month, from: weekEndDate) {
-            startFormatter.dateFormat = "d"
-            endFormatter.dateFormat = "d MMM yyyy"
-            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
-        } else {
-            // Different months
-            startFormatter.dateFormat = "d MMM"
-            endFormatter.dateFormat = "d MMM yyyy"
-            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
-        }
-    }
-    
     // Update counter when earnings change
     func updateEarningsDisplay() {
         previousEarnings = currentEarnings
@@ -141,216 +89,9 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Earnings summary card with arrow navigation
-                    VStack(spacing: 0) {
-                        // Time period selector with arrow buttons
-                        HStack {
-                            // Left arrow button
-                            Button(action: goToPreviousPeriod) {
-                                Image(systemName: "chevron.left")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(width: 36, height: 36)
-                                    .background(
-                                        Circle()
-                                            .fill(Color.white.opacity(0.25))
-                                    )
-                                    .opacity(currentIndex > 0 ? 1.0 : 0.3)
-                            }
-                            .disabled(currentIndex == 0)
-                            
-                            Spacer()
-                            
-                            // Time period title
-                            Text(timeRange.title)
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            // Right arrow button
-                            Button(action: goToNextPeriod) {
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(width: 36, height: 36)
-                                    .background(
-                                        Circle()
-                                            .fill(Color.white.opacity(0.25))
-                                    )
-                                    .opacity(currentIndex < timeRanges.count - 1 ? 1.0 : 0.3)
-                            }
-                            .disabled(currentIndex == timeRanges.count - 1)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        
-                        // Earnings details
-                        NavigationLink(destination: EarningsDetailView(timeRange: $timeRange)) {
-                            VStack(spacing: 8) {
-                                // Earnings amount
-                                CountingValueView(
-                                    value: currentEarnings,
-                                    fromValue: previousEarnings,
-                                    isAnimating: currentEarnings != previousEarnings,
-                                    fontSize: 36,
-                                    positiveColor: .white,
-                                    negativeColor: .white
-                                )
-                                
-                                Text("\(formatHours(currentHours)) worked")
-                                    .font(.subheadline)
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .padding(.top, 4)
-                                
-                                // Visual cue that this is tappable
-                                HStack(spacing: 4) {
-                                    Text("View Details")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                }
-                                .padding(.top, 2)
-                            }
-                            .padding(.bottom, 20)
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                viewModel.themeColor.opacity(0.7),
-                                viewModel.themeColor
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .cornerRadius(20)
-                    .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
-                    .padding(.horizontal)
-                    .padding(.top)
-                    .onChange(of: timeRange) { _, _ in
-                        updateEarningsDisplay()
-                    }
-                    
-                    // Navigation cards in a 2x2 grid - matching the Finance app's design
-                    VStack(spacing: 16) {
-                        HStack(spacing: 16) {
-                            NavigationLink(destination: ShiftsListView()) {
-                                NavCardView(
-                                    title: "Shifts",
-                                    subtitle: "View All",
-                                    iconName: "calendar.badge.clock"
-                                )
-                            }
-                            
-                            NavigationLink(destination: JobsListView()) {
-                                NavCardView(
-                                    title: "Jobs",
-                                    subtitle: "Manage",
-                                    iconName: "briefcase.fill"
-                                )
-                            }
-                        }
-                        
-                        HStack(spacing: 16) {
-                            NavigationLink(destination: AddShiftView()) {
-                                NavCardView(
-                                    title: "Add",
-                                    subtitle: "Work Shift",
-                                    iconName: "plus.circle.fill"
-                                )
-                            }
-                            
-                            NavigationLink(destination: SettingsView()) {
-                                NavCardView(
-                                    title: "Settings",
-                                    subtitle: "Customise",
-                                    iconName: "gear"
-                                )
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Recent shifts section
-                    VStack(alignment: .leading, spacing: 12) {
-                        
-                        if recentShifts.isEmpty {
-                            VStack(spacing: 12) {
-                                Image(systemName: "calendar.badge.clock")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(.secondary)
-                                
-                                Text("No shifts recorded")
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                                
-                                Text("Tap 'Add Work Shift' to get started")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                        } else {
-                            ScrollView {
-                                LazyVStack(spacing: 12) {
-                                    // Iterate over grouped shifts by week
-                                    ForEach(groupedRecentShifts, id: \.date) { group in
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            // Week header with date and weekly stats
-                                            HStack {
-                                                // Show the week range
-                                                Text(formattedWeek(group.date))
-                                                    .font(.headline)
-                                                    .foregroundColor(.secondary)
-                                                
-                                                Spacer()
-                                                
-                                                // Weekly summary
-                                                let weeklyHours = group.shifts.reduce(0) { $0 + $1.duration }
-                                                Text(formatHours(weeklyHours))
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            .padding(.vertical, 4)
-                                            
-                                            Divider()
-                                            
-                                            // Shifts for this week
-                                            ForEach(group.shifts) { shift in
-                                                NavigationLink(destination: EditShiftView(shift: shift)) {
-                                                    ShiftCardView(shift: shift)
-                                                        .environmentObject(viewModel)
-                                                }
-                                                .buttonStyle(PlainButtonStyle())
-                                                .padding(.vertical, 2)
-                                            }
-                                        }
-                                        .padding(.vertical, 2)
-                                    }
-                                }
-                                .padding()
-                            }
-                            
-                            NavigationLink(destination: ShiftsListView()) {
-                                Text("See All Shifts")
-                                    .font(.headline)
-                                    .foregroundColor(viewModel.themeColor)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                                    .cornerRadius(15)
-                                    .padding(.horizontal)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
+                    earningsSummaryCard
+                    navigationCardsGrid
+                    recentShiftsSection
                 }
                 .padding(.bottom, 20)
             }
@@ -374,6 +115,270 @@ struct ContentView: View {
                 // When earnings change, just update the previous value for the animation
                 updateEarningsDisplay()
             }
+        }
+    }
+
+    // MARK: - View Components
+
+    private var earningsSummaryCard: some View {
+        VStack(spacing: 0) {
+            // Time period selector with arrow buttons
+            HStack {
+                // Left arrow button
+                Button(action: goToPreviousPeriod) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.25))
+                        )
+                        .opacity(currentIndex > 0 ? 1.0 : 0.3)
+                }
+                .disabled(currentIndex == 0)
+                
+                Spacer()
+                
+                // Time period title
+                Text(timeRange.title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                // Right arrow button
+                Button(action: goToNextPeriod) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.25))
+                        )
+                        .opacity(currentIndex < timeRanges.count - 1 ? 1.0 : 0.3)
+                }
+                .disabled(currentIndex == timeRanges.count - 1)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            
+            // Earnings details - destination updated to use the new initializer for EarningsDetailView
+            NavigationLink(destination: EarningsDetailView()) {
+                VStack(spacing: 8) {
+                    // Earnings amount
+                    CountingValueView(
+                        value: currentEarnings,
+                        fromValue: previousEarnings,
+                        isAnimating: currentEarnings != previousEarnings,
+                        fontSize: 36,
+                        positiveColor: .white,
+                        negativeColor: .white
+                    )
+                    
+                    Text("\(formatHours(currentHours)) worked")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.top, 4)
+                    
+                    // Visual cue that this is tappable
+                    HStack(spacing: 4) {
+                        Text("View Details")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.top, 2)
+                }
+                .padding(.bottom, 20)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    viewModel.themeColor.opacity(0.7),
+                    viewModel.themeColor
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(20)
+        .shadow(color: viewModel.themeColor.opacity(0.5), radius: 10, x: 0, y: 5)
+        .padding(.horizontal)
+        .padding(.top)
+        .onChange(of: timeRange) { _, _ in
+            updateEarningsDisplay()
+        }
+    }
+
+    private var navigationCardsGrid: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                NavigationLink(destination: ShiftsListView()) {
+                    NavCardView(
+                        title: "Shifts",
+                        subtitle: "View All",
+                        iconName: "calendar.badge.clock"
+                    )
+                }
+                
+                NavigationLink(destination: JobsListView()) {
+                    NavCardView(
+                        title: "Jobs",
+                        subtitle: "Manage",
+                        iconName: "briefcase.fill"
+                    )
+                }
+            }
+            
+            HStack(spacing: 16) {
+                NavigationLink(destination: AddShiftView()) {
+                    NavCardView(
+                        title: "Add",
+                        subtitle: "Work Shift",
+                        iconName: "plus.circle.fill"
+                    )
+                }
+                
+                NavigationLink(destination: SettingsView()) {
+                    NavCardView(
+                        title: "Settings",
+                        subtitle: "Customise",
+                        iconName: "gear"
+                    )
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var recentShiftsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            
+            if recentShifts.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    
+                    Text("No shifts recorded")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Tap 'Add Work Shift' to get started")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                LazyVStack(spacing: 12) {
+                    // Iterate over grouped shifts by week
+                    ForEach(groupedRecentShifts, id: \.date) { group in
+                        VStack(alignment: .leading, spacing: 4) {
+                            // Week header with date and weekly stats
+                            HStack {
+                                // Show the week range
+                                Text(formattedWeek(group.date))
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                                
+                                // Weekly summary
+                                let weeklyHours = group.shifts.reduce(0) { $0 + $1.duration }
+                                Text(formatHours(weeklyHours))
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                            
+                            Divider()
+                            
+                            // Shifts for this week
+                            ForEach(group.shifts) { shift in
+                                NavigationLink(destination: EditShiftView(shift: shift)) {
+                                    ShiftCardView(shift: shift)
+                                        .environmentObject(viewModel)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .padding(.vertical, 2)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .padding()
+                
+                NavigationLink(destination: ShiftsListView()) {
+                    Text("See All Shifts")
+                        .font(.headline)
+                        .foregroundColor(viewModel.themeColor)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1))
+                        .cornerRadius(15)
+                        .padding(.horizontal)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
+
+    private func formatCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "£"
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? "£0.00"
+    }
+    
+    private func formatHours(_ hours: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        
+        guard let formattedHours = formatter.string(from: NSNumber(value: hours)) else {
+            return "\(hours)h"
+        }
+        
+        return "\(formattedHours)h"
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+    
+    private func formattedWeek(_ weekStartDate: Date) -> String {
+        let calendar = Calendar.current
+        let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate)!
+        
+        let startFormatter = DateFormatter()
+        let endFormatter = DateFormatter()
+        
+        // If same month, only show day number for start date
+        if calendar.component(.month, from: weekStartDate) == calendar.component(.month, from: weekEndDate) {
+            startFormatter.dateFormat = "d"
+            endFormatter.dateFormat = "d MMM yyyy"
+            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
+        } else {
+            // Different months
+            startFormatter.dateFormat = "d MMM"
+            endFormatter.dateFormat = "d MMM yyyy"
+            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
         }
     }
 }

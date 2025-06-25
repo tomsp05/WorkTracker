@@ -25,6 +25,11 @@ struct JobFormView: View {
     @State private var hourlyRate: Double = 10.0
     @State private var selectedColor: String = "Blue"
     @State private var isActive: Bool = true
+    @State private var presetShifts: [PresetShift] = [] // Add state for presets
+    
+    // For managing the preset form sheet
+    @State private var showingPresetForm = false
+    @State private var selectedPreset: PresetShift?
     
     // For edit mode
     var job: Job? = nil
@@ -57,6 +62,7 @@ struct JobFormView: View {
             _hourlyRate = State(initialValue: job.hourlyRate)
             _selectedColor = State(initialValue: job.color)
             _isActive = State(initialValue: job.isActive)
+            _presetShifts = State(initialValue: job.presetShifts) // Initialize presets
         }
     }
     
@@ -86,6 +92,35 @@ struct JobFormView: View {
                 }
                 .padding(.vertical, 8)
             }
+
+            // Preset Shifts Management Section
+            Section(header: Text("Preset Shifts")) {
+                ForEach(presetShifts) { preset in
+                    Button(action: {
+                        self.selectedPreset = preset
+                        self.showingPresetForm = true
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(preset.name).foregroundColor(.primary)
+                                Text("\(formatTime(preset.startTime)) - \(formatTime(preset.endTime))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "pencil").foregroundColor(.accentColor)
+                        }
+                    }
+                }
+                .onDelete(perform: deletePreset)
+                
+                Button(action: {
+                    self.selectedPreset = nil // Ensure we are creating a new one
+                    self.showingPresetForm = true
+                }) {
+                    Label("Add Preset Shift", systemImage: "plus.circle.fill")
+                }
+            }
             
             if isEditMode {
                 Section(header: Text("Status")) {
@@ -106,6 +141,25 @@ struct JobFormView: View {
             }
         }
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+        .sheet(isPresented: $showingPresetForm) {
+            let presetBinding = Binding<PresetShift>(
+                get: {
+                    // If selectedPreset is nil, create a new empty one for the form
+                    self.selectedPreset ?? PresetShift(name: "", startTime: Date(), endTime: Date(), breakDuration: 0.5)
+                },
+                set: { updatedPreset in
+                    if let index = self.presetShifts.firstIndex(where: { $0.id == updatedPreset.id }) {
+                        // Update existing preset
+                        self.presetShifts[index] = updatedPreset
+                    } else if self.selectedPreset == nil {
+                        // Add new preset
+                        self.presetShifts.append(updatedPreset)
+                    }
+                    self.selectedPreset = updatedPreset // keep it selected
+                }
+            )
+            PresetShiftFormView(preset: presetBinding)
+        }
     }
     
     private func saveJob() {
@@ -115,6 +169,7 @@ struct JobFormView: View {
                 updatedJob.hourlyRate = hourlyRate
                 updatedJob.color = selectedColor
                 updatedJob.isActive = isActive
+                updatedJob.presetShifts = presetShifts // Save presets
                 
                 viewModel.updateJob(updatedJob)
             }
@@ -122,13 +177,18 @@ struct JobFormView: View {
             let newJob = Job(
                 name: jobName,
                 hourlyRate: hourlyRate,
-                color: selectedColor
+                color: selectedColor,
+                presetShifts: presetShifts // Save presets
             )
             
             viewModel.addJob(newJob)
         }
         
         isPresented = false
+    }
+
+    private func deletePreset(at offsets: IndexSet) {
+        presetShifts.remove(atOffsets: offsets)
     }
     
     private var currencyFormatter: NumberFormatter {
@@ -137,6 +197,12 @@ struct JobFormView: View {
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
     
     private func getJobColor(_ colorName: String) -> Color {
