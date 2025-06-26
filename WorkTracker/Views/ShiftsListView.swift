@@ -13,38 +13,13 @@ struct ShiftsListView: View {
         _filterState = State(initialValue: initialFilterState ?? ShiftFilterState())
     }
 
-    // Group shifts by day and sort by date (most recent first)
+    // Group shifts by week and sort by date (most recent first)
     private var groupedShifts: [(date: Date, shifts: [WorkShift])] {
         // Apply all filters
         let filteredShifts = viewModel.shifts.filter { shift in
             // Apply time filter
-            let passesTimeFilter: Bool
-            switch filterState.timeFilter {
-            case .all:
-                passesTimeFilter = true
-            case .future:
-                let currentDate = Calendar.current.startOfDay(for: Date())
-                passesTimeFilter = Calendar.current.startOfDay(for: shift.date) >= currentDate
-            case .past:
-                let currentDate = Calendar.current.startOfDay(for: Date())
-                passesTimeFilter = Calendar.current.startOfDay(for: shift.date) <= currentDate
-            case .today:
-                passesTimeFilter = Calendar.current.isDateInToday(shift.date)
-            case .thisWeek:
-                passesTimeFilter = Calendar.current.isDate(shift.date, equalTo: Date(), toGranularity: .weekOfYear)
-            case .thisMonth:
-                passesTimeFilter = Calendar.current.isDate(shift.date, equalTo: Date(), toGranularity: .month)
-            case .lastMonth:
-                let lastMonth = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
-                passesTimeFilter = Calendar.current.isDate(shift.date, equalTo: lastMonth, toGranularity: .month)
-            case .custom:
-                if let startDate = filterState.customStartDate, let endDate = filterState.customEndDate {
-                    let adjustedEndDate = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: endDate)!
-                    passesTimeFilter = shift.date >= startDate && shift.date <= adjustedEndDate
-                } else {
-                    passesTimeFilter = true
-                }
-            }
+            let (startDate, endDate) = filterState.dateRange
+            let passesTimeFilter = shift.date >= startDate && shift.date <= endDate
 
             // Apply job filter
             let passesJobFilter = filterState.selectedJobIds.isEmpty || filterState.selectedJobIds.contains(shift.jobId)
@@ -64,9 +39,10 @@ struct ShiftsListView: View {
             return passesTimeFilter && passesJobFilter && passesShiftTypeFilter && passesPaidStatusFilter
         }
 
-        // Group by the start of day for each shift date.
+        // Group by the start of the week for each shift date.
+        let calendar = Calendar.current
         let groups = Dictionary(grouping: filteredShifts) { shift in
-            Calendar.current.startOfDay(for: shift.date)
+            calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: shift.date))!
         }
         // Sort the groups by key (date) descending.
         let sortedGroups = groups.sorted { $0.key > $1.key }
@@ -129,10 +105,10 @@ struct ShiftsListView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    if filterState.timeFilter != .all {
+                    if filterState.hasActiveFilters {
                         filterTag(
-                            icon: filterState.timeFilter.systemImage,
-                            text: filterState.timeFilter.rawValue,
+                            icon: "calendar",
+                            text: filterState.analytics.timeFilter.rawValue,
                             color: viewModel.themeColor
                         )
                     }
@@ -194,7 +170,7 @@ struct ShiftsListView: View {
     // Helper to count active filters
     private var activeFilterCount: Int {
         var count = 0
-        if filterState.timeFilter != .all { count += 1 }
+        if filterState.analytics.timeFilter != .month || filterState.analytics.timeOffset != 0 { count += 1 }
         if !filterState.selectedJobIds.isEmpty { count += 1 }
         if !filterState.shiftTypes.isEmpty { count += 1 }
         if filterState.isPaid != nil { count += 1 }
@@ -212,7 +188,7 @@ struct ShiftsListView: View {
                     ForEach(groupedShifts, id: \.date) { group in
                         VStack(alignment: .leading, spacing: 4) {
                             // Date header for the group
-                            Text(formattedDate(group.date))
+                            Text(formattedWeek(group.date))
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                                 .padding(.vertical, 4)
@@ -270,10 +246,24 @@ struct ShiftsListView: View {
     }
 
     // Helper to format the grouped date header.
-    private func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium // e.g., "Jun 25, 2025"
-        return formatter.string(from: date)
+    private func formattedWeek(_ weekStartDate: Date) -> String {
+        let calendar = Calendar.current
+        let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate)!
+        
+        let startFormatter = DateFormatter()
+        let endFormatter = DateFormatter()
+        
+        // If same month, only show day number for start date
+        if calendar.component(.month, from: weekStartDate) == calendar.component(.month, from: weekEndDate) {
+            startFormatter.dateFormat = "d"
+            endFormatter.dateFormat = "d MMM yyyy"
+            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
+        } else {
+            // Different months
+            startFormatter.dateFormat = "d MMM"
+            endFormatter.dateFormat = "d MMM yyyy"
+            return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
+        }
     }
 }
 

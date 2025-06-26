@@ -12,23 +12,14 @@ struct ShiftFilterView: View {
     @Binding var filterState: ShiftFilterState
     @EnvironmentObject var viewModel: WorkHoursViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         NavigationView {
             Form {
                 // Time Filter Section
                 Section(header: Text("Date Range")) {
-                    Picker("Time Frame", selection: $filterState.timeFilter) {
-                        ForEach(ShiftTimeFilter.allCases) { filter in
-                            Text(filter.rawValue).tag(filter)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-
-                    if filterState.timeFilter == .custom {
-                        DatePicker("Start Date", selection: Binding(get: { filterState.customStartDate ?? Date() }, set: { filterState.customStartDate = $0 }), displayedComponents: .date)
-                        DatePicker("End Date", selection: Binding(get: { filterState.customEndDate ?? Date() }, set: { filterState.customEndDate = $0 }), displayedComponents: .date)
-                    }
+                    timeNavigationView
                 }
 
                 // Job Filter Section
@@ -116,6 +107,67 @@ struct ShiftFilterView: View {
             }, trailing: Button("Done") {
                 dismiss()
             })
+        }
+    }
+    
+    private var timeNavigationView: some View {
+        VStack(spacing: 12) {
+            Picker("Time Filter", selection: $filterState.analytics.timeFilter) {
+                ForEach(AnalyticsTimeFilter.allCases, id: \.self) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            
+            HStack {
+                Button(action: { filterState.analytics.timeOffset -= 1 }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(viewModel.themeColor)
+                        .font(.system(size: 16, weight: .medium))
+                        .padding(8)
+                        .background(Circle().fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                }
+                
+                Spacer()
+                
+                Text(timePeriodTitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                
+                Spacer()
+                
+                Button(action: { if filterState.analytics.timeOffset < 0 { filterState.analytics.timeOffset += 1 } }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(viewModel.themeColor)
+                        .font(.system(size: 16, weight: .medium))
+                        .padding(8)
+                        .background(Circle().fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                }
+                .disabled(filterState.analytics.timeOffset == 0).opacity(filterState.analytics.timeOffset == 0 ? 0.5 : 1.0)
+            }
+        }
+    }
+    
+    private var timePeriodTitle: String {
+        let (start, end) = filterState.dateRange
+        let formatter = DateFormatter()
+        
+        switch filterState.analytics.timeFilter {
+        case .week:
+            formatter.dateFormat = "MMM d"
+            return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
+        case .month:
+            formatter.dateFormat = "MMMM yyyy"
+            return formatter.string(from: start)
+        case .yearToDate:
+            formatter.dateFormat = "yyyy"
+            let year = formatter.string(from: end)
+            return "\(year) YTD"
+        case .year:
+            formatter.dateFormat = "yyyy"
+            return formatter.string(from: start)
         }
     }
 }

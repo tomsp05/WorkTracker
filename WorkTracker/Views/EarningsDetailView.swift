@@ -52,6 +52,10 @@ struct EarningsDetailView: View {
         case .year:
             endDate = now.addingTimeInterval(Double(filterState.timeOffset) * (365 * 24 * 60 * 60))
             startDate = calendar.date(byAdding: .year, value: -1, to: endDate)!
+        @unknown default:
+            assertionFailure("Unhandled AnalyticsTimeFilter case")
+            endDate = now
+            startDate = now
         }
         
         return (start: startDate, end: endDate)
@@ -74,6 +78,9 @@ struct EarningsDetailView: View {
         case .year:
             formatter.dateFormat = "yyyy"
             return formatter.string(from: dateRange.start)
+        @unknown default:
+            assertionFailure("Unhandled AnalyticsTimeFilter case")
+            return "Period"
         }
     }
     
@@ -609,3 +616,4 @@ struct JobBreakdownRow: View {
         .padding(.vertical, 8)
     }
 }
+
