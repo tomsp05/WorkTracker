@@ -1,17 +1,4 @@
-//
-//  JobsListView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
-
-
-//
-//  JobsListView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
+// WorkTracker/Views/JobsListView.swift
 
 import SwiftUI
 
@@ -21,27 +8,33 @@ struct JobsListView: View {
     @State private var showingAddJobSheet = false
     @State private var showingDeleteConfirmation = false
     @State private var jobToDelete: Job? = nil
-    
+
     var body: some View {
-        List {
+        ScrollView {
             if viewModel.jobs.isEmpty {
                 emptyJobsView
+                    .padding(.horizontal)
             } else {
-                // Active jobs section
-                Section(header: Text("Active Jobs")) {
-                    ForEach(viewModel.jobs.filter { $0.isActive }, id: \.id) { job in
-                        jobRow(for: job)
+                VStack(spacing: 12) {
+                    // Active jobs section
+                    if !viewModel.jobs.filter({ $0.isActive }).isEmpty {
+                        Section(header: Text("Active Jobs").font(.headline).padding(.horizontal)) {
+                            ForEach(viewModel.jobs.filter { $0.isActive }) { job in
+                                jobRow(for: job)
+                            }
+                        }
                     }
-                }
-                
-                // Inactive jobs section (if any)
-                if viewModel.jobs.contains(where: { !$0.isActive }) {
-                    Section(header: Text("Inactive Jobs")) {
-                        ForEach(viewModel.jobs.filter { !$0.isActive }, id: \.id) { job in
-                            jobRow(for: job)
+
+                    // Inactive jobs section (if any)
+                    if !viewModel.jobs.filter({ !$0.isActive }).isEmpty {
+                        Section(header: Text("Inactive Jobs").font(.headline).padding(.horizontal)) {
+                            ForEach(viewModel.jobs.filter { !$0.isActive }) { job in
+                                jobRow(for: job)
+                            }
                         }
                     }
                 }
+                .padding(.vertical)
             }
         }
         .navigationTitle("Jobs")
@@ -80,23 +73,24 @@ struct JobsListView: View {
             )
         }
     }
-    
+
     private var emptyJobsView: some View {
         VStack(spacing: 20) {
+            Spacer()
             Image(systemName: "briefcase.fill")
                 .font(.system(size: 64))
-                .foregroundColor(.secondary)
-            
+                .foregroundColor(viewModel.themeColor.opacity(0.6))
+
             Text("No Jobs Added")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
+                .font(.title2)
+                .fontWeight(.bold)
+
             Text("Add a job to start tracking your work hours and earnings.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            
+
             Button(action: {
                 showingAddJobSheet = true
             }) {
@@ -107,45 +101,21 @@ struct JobsListView: View {
                     .frame(maxWidth: .infinity)
                     .background(viewModel.themeColor)
                     .cornerRadius(15)
+                    .shadow(color: viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
             }
             .padding(.top, 10)
+            Spacer()
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-        .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets())
     }
-    
+
     private func jobRow(for job: Job) -> some View {
-        NavigationLink(destination: JobDetailView(job: job)) {
-            HStack(spacing: 12) {
-                // Color indicator
-                Circle()
-                    .fill(getJobColor(job.color))
-                    .frame(width: 16, height: 16)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(job.name)
-                        .font(.headline)
-                    
-                    Text("£\(String(format: "%.2f", job.hourlyRate))/hr")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                if !job.isActive {
-                    Text("Inactive")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.2))
-                        .cornerRadius(8)
-                }
-            }
-            .padding(.vertical, 4)
+        NavigationLink(destination: JobDetailView(job: job).environmentObject(viewModel)) {
+            JobCardView(job: job)
+                .padding(.horizontal)
         }
+        .buttonStyle(PlainButtonStyle())
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 jobToDelete = job
@@ -167,22 +137,10 @@ struct JobsListView: View {
             .tint(.orange)
         }
     }
-    
+
     private func toggleJobActiveStatus(_ job: Job) {
         var updatedJob = job
         updatedJob.isActive.toggle()
         viewModel.updateJob(updatedJob)
-    }
-    
-    private func getJobColor(_ colorName: String) -> Color {
-        switch colorName {
-        case "Blue": return Color(red: 0.20, green: 0.40, blue: 0.70)
-        case "Green": return Color(red: 0.20, green: 0.55, blue: 0.30)
-        case "Orange": return Color(red: 0.80, green: 0.40, blue: 0.20)
-        case "Purple": return Color(red: 0.50, green: 0.25, blue: 0.70)
-        case "Red": return Color(red: 0.70, green: 0.20, blue: 0.20)
-        case "Teal": return Color(red: 0.20, green: 0.50, blue: 0.60)
-        default: return .blue
-        }
     }
 }
