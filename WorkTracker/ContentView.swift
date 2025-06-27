@@ -221,13 +221,13 @@ struct ContentView: View {
     private var navigationCardsGrid: some View {
         VStack(spacing: 16) {
             HStack(spacing: 16) {
-                NavigationLink(destination: ShiftsListView()) {
-                    NavCardView(
-                        title: "Shifts",
-                        subtitle: "View All",
-                        iconName: "calendar.badge.clock"
-                    )
-                }
+                NavigationLink(destination: CalendarView()) {
+                                    NavCardView(
+                                        title: "Calendar",
+                                        subtitle: "View Shifts",
+                                        iconName: "calendar"
+                                    )
+                                }
                 
                 NavigationLink(destination: JobsListView()) {
                     NavCardView(
