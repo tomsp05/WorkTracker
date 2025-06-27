@@ -7,41 +7,112 @@ struct CalendarView: View {
     @State private var selectedDate = Date()
     @State private var selectedDay: Date?
     @State private var showingShiftDetail = false
+    @State private var showFilterSheet = false
+    @State private var filterState = ShiftFilterState()
+
+    private var calendarHasActiveFilters: Bool {
+        !filterState.selectedJobIds.isEmpty ||
+        filterState.minEarnings != nil ||
+        filterState.maxEarnings != nil ||
+        !filterState.shiftTypes.isEmpty ||
+        filterState.isPaid != nil
+    }
+
+    private var monthlyGroupedShifts: [(date: Date, shifts: [WorkShift])] {
+        let monthShifts = viewModel.shifts.filter { shift in
+            let isInMonth = Calendar.current.isDate(shift.date, equalTo: selectedDate, toGranularity: .month)
+            if !isInMonth { return false }
+
+            if !filterState.selectedJobIds.isEmpty && !filterState.selectedJobIds.contains(shift.jobId) {
+                return false
+            }
+
+            if !filterState.shiftTypes.isEmpty && !filterState.shiftTypes.contains(shift.shiftType) {
+                return false
+            }
+
+            if let isPaid = filterState.isPaid, shift.isPaid != isPaid {
+                return false
+            }
+
+            return true
+        }
+        
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: monthShifts) { shift in
+            calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: shift.date))!
+        }
+        
+        let sortedGroups = groups.sorted { $0.key > $1.key }
+        return sortedGroups.map { (date: $0.key, shifts: $0.value.sorted { $0.date > $1.date }) }
+    }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Enhanced header with better styling
-            CalendarHeaderView(selectedDate: $selectedDate)
+        ScrollView {
+            VStack(spacing: 0) {
+                CalendarHeaderView(selectedDate: $selectedDate)
+                    .padding(.horizontal)
+                    .padding(.top)
+                
+                DayOfWeekHeaderView()
+                    .padding(.horizontal)
+                
+                CalendarGridView(
+                    selectedDate: $selectedDate,
+                    selectedDay: $selectedDay,
+                    onDayTap: { date in
+                        selectedDay = date
+                        showingShiftDetail = true
+                    }
+                )
                 .padding(.horizontal)
-                .padding(.top)
-            
-            // Day of week headers
-            DayOfWeekHeaderView()
-                .padding(.horizontal)
-            
-            // Calendar grid
-            CalendarGridView(
-                selectedDate: $selectedDate,
-                selectedDay: $selectedDay,
-                onDayTap: { date in
-                    selectedDay = date
-                    showingShiftDetail = true // Always show the sheet to allow adding new shifts
+
+                if calendarHasActiveFilters {
+                    activeFiltersView
                 }
-            )
-            .padding(.horizontal)
-            
-            Spacer()
+
+                if !monthlyGroupedShifts.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        
+                        ForEach(monthlyGroupedShifts, id: \.date) { group in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(formattedWeek(group.date))
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal)
+                                
+                                Divider()
+                                    .padding(.horizontal)
+                                
+                                ForEach(group.shifts) { shift in
+                                    NavigationLink(destination: EditShiftView(shift: shift)) {
+                                        ShiftCardView(shift: shift)
+                                            .environmentObject(viewModel)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .padding(.horizontal)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        }
+                    }
+                    .padding(.top)
+                }
+            }
         }
         .navigationTitle("Shift Calendar")
         .navigationBarTitleDisplayMode(.large)
-        .background(
-            LinearGradient(
-                colors: [viewModel.themeColor.opacity(0.05), viewModel.themeColor.opacity(0.02)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-        )
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showFilterSheet = true }) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
+            }
+        }
+        .sheet(isPresented: $showFilterSheet) {
+            CalendarFilterView(filterState: $filterState)
+                .environmentObject(viewModel)
+        }
         .sheet(isPresented: $showingShiftDetail) {
             if let selectedDay = selectedDay {
                 ShiftDetailSheet(date: selectedDay)
@@ -49,6 +120,129 @@ struct CalendarView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: selectedDay)
+    }
+
+    private var activeFiltersView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Active Filters")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Button(action: {
+                    filterState = ShiftFilterState()
+                }) {
+                    Text("Clear All")
+                        .font(.subheadline)
+                        .foregroundColor(viewModel.themeColor)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 12)
+        }
+    }
+    
+    private func formattedWeek(_ weekStartDate: Date) -> String {
+        let calendar = Calendar.current
+        let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate)!
+        
+        let startFormatter = DateFormatter()
+        let endFormatter = DateFormatter()
+        
+        if calendar.isDate(weekStartDate, equalTo: weekEndDate, toGranularity: .month) {
+            startFormatter.dateFormat = "d"
+        } else {
+            startFormatter.dateFormat = "d MMM"
+        }
+        endFormatter.dateFormat = "d MMM"
+        
+        return "Week of \(startFormatter.string(from: weekStartDate)) - \(endFormatter.string(from: weekEndDate))"
+    }
+}
+
+struct CalendarFilterView: View {
+    @Binding var filterState: ShiftFilterState
+    @EnvironmentObject var viewModel: WorkHoursViewModel
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Filter by Job")) {
+                    ForEach(viewModel.jobs) { job in
+                        Button(action: {
+                            if filterState.selectedJobIds.contains(job.id) {
+                                filterState.selectedJobIds.remove(job.id)
+                            } else {
+                                filterState.selectedJobIds.insert(job.id)
+                            }
+                        }) {
+                            HStack {
+                                Text(job.name)
+                                Spacer()
+                                if filterState.selectedJobIds.contains(job.id) {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Shift Type")) {
+                    ForEach(ShiftType.allCases, id: \.self) { type in
+                        Button(action: {
+                            if filterState.shiftTypes.contains(type) {
+                                filterState.shiftTypes.remove(type)
+                            } else {
+                                filterState.shiftTypes.insert(type)
+                            }
+                        }) {
+                            HStack {
+                                Text(type.rawValue.capitalized)
+                                Spacer()
+                                if filterState.shiftTypes.contains(type) {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Payment Status")) {
+                    Picker("Status", selection: Binding(
+                        get: {
+                            if let isPaid = filterState.isPaid {
+                                return isPaid ? "Paid" : "Unpaid"
+                            } else {
+                                return "All"
+                            }
+                        },
+                        set: {
+                            if $0 == "Paid" {
+                                filterState.isPaid = true
+                            } else if $0 == "Unpaid" {
+                                filterState.isPaid = false
+                            } else {
+                                filterState.isPaid = nil
+                            }
+                        }
+                    )) {
+                        Text("All").tag("All")
+                        Text("Paid").tag("Paid")
+                        Text("Unpaid").tag("Unpaid")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+            }
+            .navigationTitle("Filter Shifts")
+            .navigationBarItems(leading: Button("Clear") {
+                filterState = ShiftFilterState()
+            }, trailing: Button("Done") {
+                dismiss()
+            })
+        }
     }
 }
 
@@ -144,7 +338,6 @@ struct CalendarGridView: View {
             Calendar.current.date(byAdding: .day, value: day - 1, to: monthFirstDay)
         }
         
-        // Fill remaining spaces to complete the last week
         while days.count % 7 != 0 {
             days.append(nil)
         }
@@ -196,7 +389,6 @@ struct CalendarDayView: View {
                     .font(.system(size: 16, weight: isToday ? .bold : .medium))
                     .foregroundColor(textColor)
                 
-                // Shift indicators with job colors
                 HStack(spacing: 3) {
                     if !shiftsForDate.isEmpty {
                         ForEach(shiftsForDate.prefix(3), id: \.id) { shift in
@@ -368,6 +560,8 @@ struct ShiftDetailSheet: View {
     }
 }
 
+// MARK: - Helper Components
+
 // Custom button style for scale effect
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -377,7 +571,7 @@ struct ScaleButtonStyle: ButtonStyle {
     }
 }
 
-// Date formatters
+// Date formatters used across the Calendar views
 private let monthFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateFormat = "MMMM"
@@ -395,4 +589,3 @@ private let selectedDayFormatter: DateFormatter = {
     formatter.dateFormat = "EEEE, MMMM d"
     return formatter
 }()
-
