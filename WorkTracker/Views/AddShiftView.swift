@@ -1,9 +1,4 @@
-//
-//  AddShiftView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 4/17/25.
-//
+// WorkTracker/Views/AddShiftView.swift
 
 import SwiftUI
 
@@ -12,20 +7,21 @@ struct AddShiftView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     
-    // Optional pre-selected job ID
-    var preSelectedJobId: UUID? = nil
-    
+    // Optional pre-selected values
+    var preSelectedJobId: UUID?
+    var preSelectedDate: Date?
+
     // Core shift data
-    @State private var selectedJobId: UUID? = nil
-    @State private var date = Date()
-    @State private var startTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!
-    @State private var endTime = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date())!
+    @State private var selectedJobId: UUID?
+    @State private var date: Date
+    @State private var startTime: Date
+    @State private var endTime: Date
     @State private var breakDuration: Double = 0.5
     @State private var notes = ""
     @State private var isPaid = false
     
     // Payment settings
-    @State private var hourlyRateOverride: Double? = nil
+    @State private var hourlyRateOverride: Double?
     @State private var useCustomRate = false
     
     // Recurring shift settings
@@ -42,6 +38,19 @@ struct AddShiftView: View {
     // Break duration settings
     private let breakDurationRange: ClosedRange<Double> = 0.0...2.0
     private let breakDurationStep: Double = 0.25
+    
+    init(preSelectedJobId: UUID? = nil, preSelectedDate: Date? = nil) {
+        self.preSelectedJobId = preSelectedJobId
+        self.preSelectedDate = preSelectedDate
+        
+        // Initialize state with pre-selected date or current date
+        _date = State(initialValue: preSelectedDate ?? Date())
+        
+        // Default start and end times
+        let initialDate = preSelectedDate ?? Date()
+        _startTime = State(initialValue: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: initialDate)!)
+        _endTime = State(initialValue: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: initialDate)!)
+    }
     
     // Form steps enum
     enum FormStep: Int, CaseIterable {
@@ -772,7 +781,7 @@ struct AddShiftView: View {
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Supporting Views for AddShiftView
 
 struct PresetShiftRow: View {
     let preset: PresetShift
@@ -821,13 +830,13 @@ struct StepIndicator: View {
             ForEach(AddShiftView.FormStep.allCases, id: \.self) { step in
                 VStack(spacing: 4) {
                     Image(systemName: step.systemImage)
-                        .font(.system(size: step == currentStep ? 24 : 18))
-                        .foregroundColor(step == currentStep ? .blue : .gray)
+                        .font(.system(size: step.rawValue == currentStep.rawValue ? 24 : 18))
+                        .foregroundColor(step.rawValue <= currentStep.rawValue ? .blue : .gray)
                     
                     Text(step.title)
                         .font(.caption)
-                        .fontWeight(step == currentStep ? .semibold : .regular)
-                        .foregroundColor(step == currentStep ? .blue : .gray)
+                        .fontWeight(step.rawValue == currentStep.rawValue ? .semibold : .regular)
+                        .foregroundColor(step.rawValue <= currentStep.rawValue ? .blue : .gray)
                 }
                 .frame(maxWidth: .infinity)
                 
@@ -1040,7 +1049,7 @@ struct EmptyStateView: View {
     }
 }
 
-// MARK: - Helper Views
+// MARK: - Helper Extensions
 
 extension View {
     func placeholderOverlay(_ text: String?) -> some View {

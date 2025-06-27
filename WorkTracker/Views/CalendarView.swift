@@ -1,9 +1,4 @@
-//
-//  CalendarView.swift
-//  WorkTracker
-//
-//  Created by Tom Speake on 6/26/25.
-//
+// WorkTracker/Views/CalendarView.swift
 
 import SwiftUI
 
@@ -30,9 +25,7 @@ struct CalendarView: View {
                 selectedDay: $selectedDay,
                 onDayTap: { date in
                     selectedDay = date
-                    if hasShifts(for: date) {
-                        showingShiftDetail = true
-                    }
+                    showingShiftDetail = true // Always show the sheet to allow adding new shifts
                 }
             )
             .padding(.horizontal)
@@ -56,10 +49,6 @@ struct CalendarView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: selectedDay)
-    }
-    
-    private func hasShifts(for date: Date) -> Bool {
-        !viewModel.shifts.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }.isEmpty
     }
 }
 
@@ -278,8 +267,6 @@ struct CalendarDayView: View {
             return viewModel.themeColor
         } else if isSelected {
             return viewModel.themeColor.opacity(0.1)
-        } else if !shiftsForDate.isEmpty {
-            return Color.clear
         } else {
             return Color.clear
         }
@@ -301,31 +288,26 @@ struct ShiftDetailSheet: View {
             .sorted { $0.startTime < $1.startTime }
     }
     
-    private var formattedDate: String {
-        selectedDayFormatter.string(from: date)
-    }
-    
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if shiftsForDate.isEmpty {
-                        Text("No shifts for this day.")
-                            .foregroundColor(.secondary)
-                            .padding()
-                    } else {
-                        ForEach(shiftsForDate) { shift in
-                            ShiftCardView(shift: shift)
-                                .environmentObject(viewModel)
-                        }
-                    }
+            VStack {
+                if shiftsForDate.isEmpty {
+                    emptyStateView
+                } else {
+                    shiftListView
                 }
-                .padding()
             }
-            .navigationTitle(formattedDate)
+            .navigationTitle(selectedDayFormatter.string(from: date))
             .navigationBarTitleDisplayMode(.inline)
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !shiftsForDate.isEmpty {
+                        NavigationLink(destination: AddShiftView(preSelectedDate: date)) {
+                            Image(systemName: "plus")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
@@ -333,6 +315,56 @@ struct ShiftDetailSheet: View {
                 }
             }
         }
+    }
+    
+    private var shiftListView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(shiftsForDate) { shift in
+                    NavigationLink(destination: EditShiftView(shift: shift)) {
+                        ShiftCardView(shift: shift)
+                            .environmentObject(viewModel)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding()
+        }
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 64))
+                .foregroundColor(viewModel.themeColor.opacity(0.6))
+            
+            Text("No Shifts Scheduled")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Text("Tap the button below to add a new shift for this day.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            NavigationLink(destination: AddShiftView(preSelectedDate: date)) {
+                Text("Add Shift")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(viewModel.themeColor)
+                    .cornerRadius(15)
+                    .shadow(color: viewModel.themeColor.opacity(0.4), radius: 8, x: 0, y: 4)
+            }
+            .padding()
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
