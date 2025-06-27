@@ -14,6 +14,9 @@ struct SettingsView: View {
     @State private var showResetConfirmation = false
     @State private var exportText = ""
     @State private var importText = ""
+
+    // State for showing onboarding sheet
+    @State private var showOnboardingSheet = false
     
     // App Specific Settings
     @AppStorage("defaultTimeRange") private var defaultTimeRange = TimeRange.thisWeek.rawValue
@@ -58,6 +61,7 @@ struct SettingsView: View {
                                 ForEach(themeOptions, id: \.self) { option in
                                     ThemeColorButton(
                                         colorName: option,
+                                        color: getThemeColor(name: option),
                                         isSelected: selectedTheme == option,
                                         onTap: { selectedTheme = option }
                                     )
@@ -225,6 +229,29 @@ struct SettingsView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
+
+                // Developer section
+                settingsSection(title: "Developer", icon: "hammer.fill") {
+                    Button(action: { showOnboardingSheet = true }) {
+                        HStack {
+                            Image(systemName: "play.rectangle.on.rectangle.fill")
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.purple)
+                                .cornerRadius(8)
+                            
+                            Text("Show Onboarding")
+                                .fontWeight(.semibold)
+                            
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
                 
                 // About section
                 settingsSection(title: "About", icon: "info.circle.fill") {
@@ -233,7 +260,7 @@ struct SettingsView: View {
                             Text("Version")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("1.0.0")
+                            Text("1.0.1")
                         }
                         
                         HStack {
@@ -247,7 +274,7 @@ struct SettingsView: View {
                             Text("Last Updated")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("April 23, 2025")
+                            Text("June 27, 2025")
                         }
                         
                         Button(action: {
@@ -285,6 +312,10 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showImportSheet) {
             importDataSheet
+        }
+        .sheet(isPresented: $showOnboardingSheet) {
+            OnboardingContainerView(isFromSettings: true)
+                .environmentObject(viewModel)
         }
         .alert(isPresented: $showResetConfirmation) {
             Alert(
@@ -504,55 +535,4 @@ struct SettingsView: View {
                 return Color(red: 0.20, green: 0.40, blue: 0.70) // Default to Darker Blue
             }
         }
-    
-    // MARK: - Supporting Views
-    
-    struct ThemeColorButton: View {
-        let colorName: String
-        let isSelected: Bool
-        let onTap: () -> Void
-        
-        var body: some View {
-            Button(action: onTap) {
-                ZStack {
-                    Circle()
-                        .fill(getThemeColorPreview(name: colorName))
-                        .frame(width: 40, height: 40)
-                        .shadow(color: getThemeColorPreview(name: colorName).opacity(0.4), radius: 3, x: 0, y: 2)
-                    
-                    if isSelected {
-                        Circle()
-                            .strokeBorder(Color.white, lineWidth: 2)
-                            .frame(width: 40, height: 40)
-                        
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-        }
-        
-        private func getThemeColorPreview(name: String) -> Color {
-                    // Match the same color calculation as in the ViewModel
-                    switch name {
-                    case "Blue":
-                        return Color(red: 0.20, green: 0.40, blue: 0.70) // Darker Blue
-                    case "Green":
-                        return Color(red: 0.20, green: 0.55, blue: 0.30) // Darker Green
-                    case "Orange":
-                        return Color(red: 0.80, green: 0.40, blue: 0.20) // Darker Orange
-                    case "Purple":
-                        return Color(red: 0.50, green: 0.25, blue: 0.70) // Darker Purple
-                    case "Red":
-                        return Color(red: 0.70, green: 0.20, blue: 0.20) // Darker Red
-                    case "Teal":
-                        return Color(red: 0.20, green: 0.50, blue: 0.60) // Darker Teal
-                    case "Pink":
-                        return Color(red: 0.90, green: 0.40, blue: 0.60)
-                    default:
-                        return Color(red: 0.20, green: 0.40, blue: 0.70) // Default to Blue
-                    }
-                }
-    }
 }
