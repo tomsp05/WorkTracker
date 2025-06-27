@@ -38,18 +38,6 @@ struct CalendarView: View {
             .padding(.horizontal)
             
             Spacer()
-            
-            // Selected day info panel
-            if let selectedDay = selectedDay {
-                SelectedDayInfoView(date: selectedDay)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.systemBackground))
-                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -2)
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
         }
         .navigationTitle("Shift Calendar")
         .navigationBarTitleDisplayMode(.large)
@@ -212,10 +200,6 @@ struct CalendarDayView: View {
         viewModel.shifts.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
     }
     
-    private var totalHours: Double {
-        shiftsForDate.reduce(0.0) { $0 + $1.duration }
-    }
-    
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 4) {
@@ -223,37 +207,22 @@ struct CalendarDayView: View {
                     .font(.system(size: 16, weight: isToday ? .bold : .medium))
                     .foregroundColor(textColor)
                 
-                // Shift indicators
-                HStack(spacing: 2) {
+                // Shift indicators with job colors
+                HStack(spacing: 3) {
                     if !shiftsForDate.isEmpty {
-                        if shiftsForDate.count == 1 {
+                        ForEach(shiftsForDate.prefix(3), id: \.id) { shift in
                             Circle()
-                                .fill(viewModel.themeColor)
+                                .fill(getJobColor(for: shift.jobId))
                                 .frame(width: 6, height: 6)
-                        } else {
-                            ForEach(0..<min(shiftsForDate.count, 3), id: \.self) { _ in
-                                Circle()
-                                    .fill(viewModel.themeColor)
-                                    .frame(width: 4, height: 4)
-                            }
-                            if shiftsForDate.count > 3 {
-                                Text("+")
-                                    .font(.caption2)
-                                    .foregroundColor(viewModel.themeColor)
-                                    .fontWeight(.bold)
-                            }
+                        }
+                        if shiftsForDate.count > 3 {
+                            Image(systemName: "plus")
+                                .font(.caption2)
+                                .foregroundColor(viewModel.themeColor)
                         }
                     }
                 }
                 .frame(height: 8)
-                
-                // Hours worked indicator
-                if totalHours > 0 {
-                    Text("\(totalHours, specifier: "%.1f")h")
-                        .font(.caption2)
-                        .foregroundColor(viewModel.themeColor)
-                        .fontWeight(.medium)
-                }
             }
             .frame(height: 50)
             .frame(maxWidth: .infinity)
@@ -269,6 +238,21 @@ struct CalendarDayView: View {
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 0.95 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: isSelected)
+    }
+    
+    private func getJobColor(for jobId: UUID) -> Color {
+        if let job = viewModel.jobs.first(where: { $0.id == jobId }) {
+            switch job.color {
+            case "Blue": return Color(red: 0.20, green: 0.40, blue: 0.70)
+            case "Green": return Color(red: 0.20, green: 0.55, blue: 0.30)
+            case "Orange": return Color(red: 0.80, green: 0.40, blue: 0.20)
+            case "Purple": return Color(red: 0.50, green: 0.25, blue: 0.70)
+            case "Red": return Color(red: 0.70, green: 0.20, blue: 0.20)
+            case "Teal": return Color(red: 0.20, green: 0.50, blue: 0.60)
+            default: return .gray
+            }
+        }
+        return .gray
     }
     
     private var dayNumber: Int {
@@ -295,78 +279,14 @@ struct CalendarDayView: View {
         } else if isSelected {
             return viewModel.themeColor.opacity(0.1)
         } else if !shiftsForDate.isEmpty {
-            return viewModel.themeColor.opacity(0.05)
+            return Color.clear
         } else {
-            return Color(.systemBackground)
+            return Color.clear
         }
     }
     
     private var borderColor: Color {
         isSelected ? viewModel.themeColor : Color.clear
-    }
-}
-
-struct SelectedDayInfoView: View {
-    let date: Date
-    @EnvironmentObject var viewModel: WorkHoursViewModel
-    
-    private var shiftsForDate: [WorkShift] {
-        viewModel.shifts.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
-    }
-    
-    private var totalHours: Double {
-        shiftsForDate.reduce(0.0) { $0 + $1.duration }
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(date, formatter: selectedDayFormatter)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                if !shiftsForDate.isEmpty {
-                    Text("\(totalHours, specifier: "%.1f") hours")
-                        .font(.subheadline)
-                        .foregroundColor(viewModel.themeColor)
-                        .fontWeight(.medium)
-                }
-            }
-            
-            if shiftsForDate.isEmpty {
-                Text("No shifts scheduled")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(shiftsForDate.prefix(3), id: \.id) { shift in
-                        HStack {
-                            Circle()
-                                .fill(viewModel.themeColor)
-                                .frame(width: 6, height: 6)
-                            
-                            Text("\(shift.startTime, formatter: timeFormatter) - \(shift.endTime, formatter: timeFormatter)")
-                                .font(.subheadline)
-                            
-                            Spacer()
-                            
-                            Text("\(shift.duration, specifier: "%.1f")h")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    if shiftsForDate.count > 3 {
-                        Text("+ \(shiftsForDate.count - 3) more shifts")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 12)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -376,41 +296,35 @@ struct ShiftDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     private var shiftsForDate: [WorkShift] {
-        viewModel.shifts.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
+        viewModel.shifts
+            .filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
+            .sorted { $0.startTime < $1.startTime }
+    }
+    
+    private var formattedDate: String {
+        selectedDayFormatter.string(from: date)
     }
     
     var body: some View {
         NavigationView {
-            List {
-                Section {
-                    ForEach(shiftsForDate, id: \.id) { shift in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("\(shift.startTime, formatter: timeFormatter) - \(shift.endTime, formatter: timeFormatter)")
-                                    .font(.headline)
-                                
-                                Spacer()
-                                
-                                Text("\(shift.duration, specifier: "%.1f")h")
-                                    .font(.subheadline)
-                                    .foregroundColor(viewModel.themeColor)
-                                    .fontWeight(.medium)
-                            }
-                            
-                            if !shift.notes.isEmpty {
-                                Text(shift.notes)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if shiftsForDate.isEmpty {
+                        Text("No shifts for this day.")
+                            .foregroundColor(.secondary)
+                            .padding()
+                    } else {
+                        ForEach(shiftsForDate) { shift in
+                            ShiftCardView(shift: shift)
+                                .environmentObject(viewModel)
                         }
-                        .padding(.vertical, 2)
                     }
-                } header: {
-                    Text(date, formatter: selectedDayFormatter)
                 }
+                .padding()
             }
-            .navigationTitle("Shift Details")
+            .navigationTitle(formattedDate)
             .navigationBarTitleDisplayMode(.inline)
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
@@ -450,8 +364,3 @@ private let selectedDayFormatter: DateFormatter = {
     return formatter
 }()
 
-private let timeFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "h:mm a"
-    return formatter
-}()
