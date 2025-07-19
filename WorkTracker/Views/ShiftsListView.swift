@@ -4,6 +4,8 @@ struct ShiftsListView: View {
     @EnvironmentObject var viewModel: WorkHoursViewModel
     @State private var showFilterSheet = false
     @Environment(\.colorScheme) var colorScheme
+    
+    @State private var showFutureShifts: Bool = false
 
     // Filter state
     @State private var filterState: ShiftFilterState
@@ -51,13 +53,19 @@ struct ShiftsListView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 4) {
             // Active filters display
             if filterState.hasActiveFilters {
                 activeFiltersView
             }
+            
+            
 
             // Shifts list
+            
+            if !viewModel.futureShifts.isEmpty {
+                upcomingShiftsSection
+            }
             shiftsList
         }
         .navigationTitle("Shifts")
@@ -198,7 +206,7 @@ struct ShiftsListView: View {
                             // List out each shift for this day.
                             ForEach(group.shifts) { shift in
                                 NavigationLink(destination: EditShiftView(shift: shift)) {
-                                    ShiftCardView(shift: shift)
+                                    ShiftCardView(shift: shift, isFuture: shift.date > Date())
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }.padding(.vertical, 2)
@@ -265,6 +273,29 @@ struct ShiftsListView: View {
             return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
         }
     }
+    
+    var upcomingShiftsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !viewModel.futureShifts.isEmpty {
+                DisclosureGroup(isExpanded: $showFutureShifts) {
+                    VStack(spacing: 12) {
+                        ForEach(viewModel.futureShifts.prefix(5)) { shift in
+                            NavigationLink(destination: EditShiftView(shift: shift)) {
+                                ShiftCardView(shift: shift, isFuture: true)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("Upcoming Shifts")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                }
+            }
+        }.padding(.horizontal)
+    }
 }
 
 struct ShiftsListView_Previews: PreviewProvider {
@@ -274,3 +305,5 @@ struct ShiftsListView_Previews: PreviewProvider {
         }
     }
 }
+
+

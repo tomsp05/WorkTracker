@@ -15,6 +15,7 @@ struct ShiftCardView: View {
     @State private var isAppearing: Bool = false
     
     var shift: WorkShift
+    var isFuture: Bool = false
     
     private var job: Job? {
         return viewModel.jobs.first(where: { $0.id == shift.jobId })
@@ -117,6 +118,17 @@ struct ShiftCardView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
                     
+                    if isFuture {
+                        Text("Future")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(viewModel.themeColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(viewModel.themeColor.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+
                     Spacer()
                     
                     // Earnings amount
@@ -159,6 +171,7 @@ struct ShiftCardView: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(UIColor.secondarySystemBackground))
+                .stroke(isFuture ? viewModel.themeColor : Color.clear, lineWidth: 1)
                 .shadow(
                     color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1),
                     radius: 5, x: 0, y: 2

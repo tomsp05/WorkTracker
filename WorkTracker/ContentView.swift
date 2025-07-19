@@ -6,6 +6,7 @@ struct ContentView: View {
     
     @State private var previousEarnings: Double = 0.0
     @State private var viewDidAppear = false
+    @State private var showFutureShifts: Bool = false
     
     // Date range for the summary
     @State private var timeRange: TimeRange = .thisWeek
@@ -29,9 +30,10 @@ struct ContentView: View {
     // Recent work shifts (limit to 5)
     private var recentShifts: [WorkShift] {
         return viewModel.shifts
+            .filter { $0.date <= Date() } // Only show past or today's shifts
             .sorted { $0.date > $1.date } // Explicitly sort by date descending (newest first)
             .prefix(5)
-            .filter { $0.date <= Date() } // Only show past or today's shifts
+            .map { $0 }
     }
     
     // Group recent shifts by week
@@ -91,6 +93,9 @@ struct ContentView: View {
                 VStack(spacing: 24) {
                     earningsSummaryCard
                     navigationCardsGrid
+                    if !viewModel.futureShifts.isEmpty {
+                        upcomingShiftsSection
+                    }
                     recentShiftsSection
                 }
                 .padding(.bottom, 20)
@@ -259,9 +264,32 @@ struct ContentView: View {
         .padding(.horizontal)
     }
 
+    var upcomingShiftsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !viewModel.futureShifts.isEmpty {
+                DisclosureGroup(isExpanded: $showFutureShifts) {
+                    VStack(spacing: 12) {
+                        ForEach(viewModel.futureShifts.prefix(5)) { shift in
+                            NavigationLink(destination: EditShiftView(shift: shift)) {
+                                ShiftCardView(shift: shift, isFuture: true)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("Upcoming Shifts")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                }
+            }
+        }.padding(.horizontal)
+    }
+
     private var recentShiftsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            
+
             if recentShifts.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "calendar.badge.clock")
@@ -298,7 +326,6 @@ struct ContentView: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
-                            .padding(.vertical, 4)
                             
                             Divider()
                             
@@ -309,10 +336,8 @@ struct ContentView: View {
                                         .environmentObject(viewModel)
                                 }
                                 .buttonStyle(PlainButtonStyle())
-                                .padding(.vertical, 2)
                             }
                         }
-                        .padding(.vertical, 2)
                     }
                 }
                 .padding()
@@ -372,12 +397,12 @@ struct ContentView: View {
         // If same month, only show day number for start date
         if calendar.component(.month, from: weekStartDate) == calendar.component(.month, from: weekEndDate) {
             startFormatter.dateFormat = "d"
-            endFormatter.dateFormat = "d MMM yyyy"
+            endFormatter.dateFormat = "d MMM"
             return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
         } else {
             // Different months
             startFormatter.dateFormat = "d MMM"
-            endFormatter.dateFormat = "d MMM yyyy"
+            endFormatter.dateFormat = "d MMM"
             return "Week of \(startFormatter.string(from: weekStartDate))-\(endFormatter.string(from: weekEndDate))"
         }
     }

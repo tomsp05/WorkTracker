@@ -15,6 +15,11 @@ class WorkHoursViewModel: ObservableObject {
 
     // AppStorage to track onboarding completion
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    
+    // Computed property for future shifts
+    var futureShifts: [WorkShift] {
+        shifts.filter { $0.date > Date() }
+    }
 
     /// Returns a SwiftUI Color based on the selected theme color name.
     var themeColor: Color {

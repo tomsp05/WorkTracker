@@ -31,7 +31,7 @@ struct AddShiftView: View {
     @State private var hasEndDate = true
     
     // UI state
-    @State private var currentStep: FormStep = .basics
+    @State private var currentStep: ShiftFormStep = .basics
     @State private var showingError = false
     @State private var errorMessage = ""
     
@@ -43,36 +43,10 @@ struct AddShiftView: View {
         self.preSelectedJobId = preSelectedJobId
         self.preSelectedDate = preSelectedDate
         
-        // Initialize state with pre-selected date or current date
-        _date = State(initialValue: preSelectedDate ?? Date())
-        
-        // Default start and end times
         let initialDate = preSelectedDate ?? Date()
+        _date = State(initialValue: initialDate)
         _startTime = State(initialValue: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: initialDate)!)
         _endTime = State(initialValue: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: initialDate)!)
-    }
-    
-    // Form steps enum
-    enum FormStep: Int, CaseIterable {
-        case basics = 0
-        case payment = 1
-        case review = 2
-        
-        var title: String {
-            switch self {
-            case .basics: return "Basic Info"
-            case .payment: return "Payment"
-            case .review: return "Review"
-            }
-        }
-        
-        var systemImage: String {
-            switch self {
-            case .basics: return "calendar.badge.clock"
-            case .payment: return "dollarsign.circle"
-            case .review: return "checkmark.circle"
-            }
-        }
     }
     
     // Computed properties
@@ -86,9 +60,9 @@ struct AddShiftView: View {
     }
     
     private var shiftDuration: Double {
-        let totalMinutes = endTime.timeIntervalSince(startTime) / 60
-        let breakMinutes = breakDuration * 60
-        return (totalMinutes - breakMinutes) / 60 // Convert to hours
+        let duration = endTime.timeIntervalSince(startTime)
+        let breakInSeconds = breakDuration * 3600
+        return (duration - breakInSeconds) / 3600 // Convert to hours
     }
     
     private var shiftEarnings: Double {
@@ -133,6 +107,9 @@ struct AddShiftView: View {
                 selectedJobId = jobId
             }
         }
+        .onChange(of: date) { _, newDate in
+            synchronizeTimeToDate(newDate)
+        }
     }
     
     // MARK: - Form Sections
@@ -163,6 +140,7 @@ struct AddShiftView: View {
                             self.startTime = preset.startTime
                             self.endTime = preset.endTime
                             self.breakDuration = preset.breakDuration
+                            synchronizeTimeToDate(self.date)
                         }
                     }
                 }
@@ -209,15 +187,16 @@ struct AddShiftView: View {
                         
                         DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
                             .labelsHidden()
-                            .onChange(of: endTime) { _, newValue in
-                                if newValue < startTime {
-                                    // If end time is earlier than start time, assume it's the next day
-                                    endTime = Calendar.current.date(byAdding: .day, value: 1, to: newValue)!
-                                }
-                            }
                     }
                 }
                 .padding(.vertical, 8)
+                
+                if endTime < startTime {
+                    Text("Ends on the next day")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .padding(.top, 4)
+                }
                 
                 Divider()
                 
@@ -539,7 +518,7 @@ struct AddShiftView: View {
                 
                 // Progress indicators
                 HStack(spacing: 8) {
-                    ForEach(FormStep.allCases, id: \.self) { step in
+                    ForEach(ShiftFormStep.allCases, id: \.self) { step in
                         Circle()
                             .fill(step.rawValue <= currentStep.rawValue ? viewModel.themeColor : Color.gray.opacity(0.3))
                             .frame(width: step == currentStep ? 12 : 8, height: step == currentStep ? 12 : 8)
@@ -646,14 +625,16 @@ struct AddShiftView: View {
             return
         }
         
+        let finalEndTime = endTime < startTime ? Calendar.current.date(byAdding: .day, value: 1, to: endTime)! : endTime
+        
         // Create shift
         let newShift = WorkShift(
             jobId: jobId,
             date: date,
-            startTime: combineDateTime(date: date, time: startTime),
-            endTime: combineDateTime(date: endTime < startTime ? Calendar.current.date(byAdding: .day, value: 1, to: date)! : date, time: endTime),
+            startTime: startTime,
+            endTime: finalEndTime,
             breakDuration: breakDuration,
-            shiftType: .regular, // Default to regular shift type since we removed the picker
+            shiftType: .regular,
             notes: notes,
             isPaid: isPaid,
             hourlyRateOverride: useCustomRate ? hourlyRateOverride : nil,
@@ -704,15 +685,12 @@ struct AddShiftView: View {
             // Limit to a reasonable number of recurring shifts even if no end date
             if !hasEndDate && shiftsToAdd.count >= 51 { break } // Max 1 year of weekly shifts
             
-            // Calculate time difference between dates
-            let timeDifference = nextDate.timeIntervalSince(currentDate)
-            
             // Create the recurring shift
             var newShift = baseShift
             newShift.id = UUID() // New unique ID
             newShift.date = nextDate
-            newShift.startTime = baseShift.startTime.addingTimeInterval(timeDifference)
-            newShift.endTime = baseShift.endTime.addingTimeInterval(timeDifference)
+            newShift.startTime = newShift.startTime.addingTimeInterval(nextDate.timeIntervalSince(currentDate))
+            newShift.endTime = newShift.endTime.addingTimeInterval(nextDate.timeIntervalSince(currentDate))
             newShift.parentShiftId = baseShift.id
             
             shiftsToAdd.append(newShift)
@@ -725,20 +703,26 @@ struct AddShiftView: View {
     
     // MARK: - Helper Methods
     
-    private func combineDateTime(date: Date, time: Date) -> Date {
+    private func synchronizeTimeToDate(_ newDate: Date) {
         let calendar = Calendar.current
         
-        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+        var dateComponents = calendar.dateComponents([.year, .month, .day], from: newDate)
+        dateComponents.hour = timeComponents.hour
+        dateComponents.minute = timeComponents.minute
         
-        var combinedComponents = DateComponents()
-        combinedComponents.year = dateComponents.year
-        combinedComponents.month = dateComponents.month
-        combinedComponents.day = dateComponents.day
-        combinedComponents.hour = timeComponents.hour
-        combinedComponents.minute = timeComponents.minute
+        if let newStartTime = calendar.date(from: dateComponents) {
+            self.startTime = newStartTime
+        }
         
-        return calendar.date(from: combinedComponents)!
+        let endTimeComponents = calendar.dateComponents([.hour, .minute], from: endTime)
+        var endDateComponents = calendar.dateComponents([.year, .month, .day], from: newDate)
+        endDateComponents.hour = endTimeComponents.hour
+        endDateComponents.minute = endTimeComponents.minute
+        
+        if let newEndTime = calendar.date(from: endDateComponents) {
+            self.endTime = newEndTime
+        }
     }
     
     private var currencyFormatter: NumberFormatter {
@@ -823,11 +807,11 @@ struct PresetShiftRow: View {
 
 
 struct StepIndicator: View {
-    var currentStep: AddShiftView.FormStep
+    var currentStep: ShiftFormStep
     
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(AddShiftView.FormStep.allCases, id: \.self) { step in
+            ForEach(ShiftFormStep.allCases, id: \.self) { step in
                 VStack(spacing: 4) {
                     Image(systemName: step.systemImage)
                         .font(.system(size: step.rawValue == currentStep.rawValue ? 24 : 18))
@@ -840,7 +824,7 @@ struct StepIndicator: View {
                 }
                 .frame(maxWidth: .infinity)
                 
-                if step != AddShiftView.FormStep.allCases.last {
+                if step != ShiftFormStep.allCases.last {
                     Rectangle()
                         .fill(step.rawValue < currentStep.rawValue ? Color.blue : Color.gray.opacity(0.3))
                         .frame(height: 2)

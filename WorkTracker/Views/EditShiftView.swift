@@ -26,6 +26,9 @@ struct EditShiftView: View {
     @State private var hourlyRateOverride: Double?
     @State private var useCustomRate: Bool
     
+    // UI state
+    @State private var currentStep: ShiftFormStep = .basics
+    
     // Confirm delete alert
     @State private var showingDeleteConfirmation = false
     
@@ -91,137 +94,34 @@ struct EditShiftView: View {
     }
     
     var body: some View {
-        Form {
-            Section(header: Text("Job Information")) {
-                // Job picker
-                Picker("Select Job", selection: $selectedJobId) {
-                    ForEach(viewModel.jobs) { job in
-                        Text(job.name).tag(job.id)
+        VStack(spacing: 0) {
+            // Content
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Step indicator
+                    StepIndicator(currentStep: currentStep)
+                        .padding(.top)
+                    
+                    // Dynamic content based on current step
+                    switch currentStep {
+                    case .basics:
+                        basicsSection
+                    case .payment:
+                        paymentSection
+                    case .review:
+                        reviewSection
                     }
                 }
-                .onChange(of: selectedJobId) { _, _ in
-                    // Reset custom rate when job changes
-                    if !useCustomRate {
-                        hourlyRateOverride = nil
-                    }
-                }
-                
-                // Pay rate
-                Toggle("Custom Pay Rate", isOn: $useCustomRate)
-                    .onChange(of: useCustomRate) { _, newValue in
-                        if !newValue {
-                            hourlyRateOverride = nil
-                        }
-                    }
-                
-                if useCustomRate {
-                    HStack {
-                        Text("Hourly Rate (£)")
-                        Spacer()
-                        TextField("Rate", value: $hourlyRateOverride, formatter: currencyFormatter)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                    }
-                }
-                
-                // Shift type selection
-                Picker("Shift Type", selection: $shiftType) {
-                    ForEach(ShiftType.allCases, id: \.self) { type in
-                        Text(type.rawValue.capitalized).tag(type)
-                    }
-                }
+                .padding(.horizontal)
+                .padding(.bottom, 100) // Space for navigation bar
             }
             
-            Section(header: Text("Date and Time")) {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
-                
-                DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
-                
-                DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
-                    .onChange(of: endTime) { _, newValue in
-                        if newValue < startTime {
-                            // If end time is earlier than start time, assume it's the next day
-                            endTime = Calendar.current.date(byAdding: .day, value: 1, to: newValue)!
-                        }
-                    }
-                
-                // Break duration in hours
-                HStack {
-                    Text("Break")
-                    Spacer()
-                    Picker("Break Duration", selection: $breakDuration) {
-                        Text("No break").tag(0.0)
-                        Text("15 min").tag(0.25)
-                        Text("30 min").tag(0.5)
-                        Text("45 min").tag(0.75)
-                        Text("1 hour").tag(1.0)
-                        Text("1.5 hours").tag(1.5)
-                        Text("2 hours").tag(2.0)
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                }
-            }
-            
-            // Summary of hours and earnings
-            Section(header: Text("Summary")) {
-                HStack {
-                    Text("Duration")
-                    Spacer()
-                    Text(formatDuration(shiftDuration))
-                        .bold()
-                }
-                
-                HStack {
-                    Text("Earnings")
-                    Spacer()
-                    Text(formatCurrency(shiftEarnings))
-                        .bold()
-                }
-                
-                Toggle("Marked as Paid", isOn: $isPaid)
-            }
-            
-            // Optional notes
-            Section(header: Text("Notes")) {
-                TextEditor(text: $notes)
-                    .frame(minHeight: 100)
-            }
-            
-            // Recurring shift note (if applicable)
-            if isRecurring {
-                Section {
-                    Text("This is part of a recurring shift series.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            // Save and Delete buttons
-            Section {
-                Button(action: updateShift) {
-                    HStack {
-                        Spacer()
-                        Text("Save Changes")
-                            .bold()
-                        Spacer()
-                    }
-                }
-                
-                Button(action: {
-                    showingDeleteConfirmation = true
-                }) {
-                    HStack {
-                        Spacer()
-                        Text("Delete Shift")
-                            .bold()
-                            .foregroundColor(.red)
-                        Spacer()
-                    }
-                }
-            }
+            // Navigation area
+            navigationFooter
         }
-        .navigationTitle("Edit Shift")
         .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
+        .navigationTitle(currentStep.title)
+        .navigationBarTitleDisplayMode(.inline)
         .alert("Delete Shift", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -253,17 +153,229 @@ struct EditShiftView: View {
         }
     }
     
+    // MARK: - Form Sections
+    
+    private var basicsSection: some View {
+        VStack(spacing: 20) {
+            // Job selection
+            FormCard(title: "Job") {
+                Picker("Select Job", selection: $selectedJobId) {
+                    ForEach(viewModel.jobs) { job in
+                        Text(job.name).tag(job.id)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+                .onChange(of: selectedJobId) { _, _ in
+                    if !useCustomRate {
+                        hourlyRateOverride = nil
+                    }
+                }
+            }
+            
+            // Date & Time
+            FormCard(title: "Date & Time") {
+                DatePicker("Date", selection: $date, displayedComponents: .date)
+                Divider()
+                DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                Divider()
+                DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                    .onChange(of: endTime) { _, newValue in
+                        if newValue < startTime {
+                            endTime = Calendar.current.date(byAdding: .day, value: 1, to: newValue)!
+                        }
+                    }
+                Divider()
+                HStack {
+                    Text("Break")
+                    Spacer()
+                    Picker("Break Duration", selection: $breakDuration) {
+                        Text("No break").tag(0.0)
+                        Text("15 min").tag(0.25)
+                        Text("30 min").tag(0.5)
+                        Text("45 min").tag(0.75)
+                        Text("1 hour").tag(1.0)
+                        Text("1.5 hours").tag(1.5)
+                        Text("2 hours").tag(2.0)
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                }
+            }
+            
+            // Shift Type
+            FormCard(title: "Shift Type") {
+                Picker("Shift Type", selection: $shiftType) {
+                    ForEach(ShiftType.allCases, id: \.self) { type in
+                        Text(type.rawValue.capitalized).tag(type)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+            }
+            
+            // Summary card
+            ShiftSummaryCard(
+                duration: shiftDuration,
+                hourlyRate: effectiveHourlyRate,
+                earnings: shiftEarnings,
+                themeColor: viewModel.themeColor
+            )
+        }
+    }
+    
+    private var paymentSection: some View {
+        VStack(spacing: 20) {
+            // Payment Rate
+            FormCard(title: "Payment Rate") {
+                Toggle("Custom Pay Rate", isOn: $useCustomRate)
+                    .onChange(of: useCustomRate) { _, newValue in
+                        if !newValue {
+                            hourlyRateOverride = nil
+                        }
+                    }
+                
+                if useCustomRate {
+                    HStack {
+                        Text("Hourly Rate (£)")
+                        Spacer()
+                        TextField("Rate", value: $hourlyRateOverride, formatter: currencyFormatter)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+            }
+            
+            // Payment Status
+            FormCard(title: "Payment Status") {
+                Toggle("Marked as Paid", isOn: $isPaid)
+            }
+        }
+    }
+    
+    private var reviewSection: some View {
+        VStack(spacing: 20) {
+            // Card with all the details for review
+            FormCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let job = viewModel.jobs.first(where: { $0.id == selectedJobId }) {
+                        ReviewRow(title: "Job", value: job.name, icon: "briefcase.fill")
+                    }
+                    ReviewRow(title: "Date", value: formatDate(date), icon: "calendar")
+                    ReviewRow(title: "Time", value: "\(formatTime(startTime)) - \(formatTime(endTime))", icon: "clock")
+                    ReviewRow(title: "Duration", value: formatDuration(shiftDuration), icon: "hourglass")
+                    ReviewRow(title: "Break", value: breakDuration == 0 ? "No break" : formatDuration(breakDuration), icon: "cup.and.saucer")
+                    
+                    if useCustomRate {
+                        ReviewRow(title: "Custom Rate", value: formatCurrency(hourlyRateOverride ?? 0), icon: "dollarsign.square")
+                    }
+                    
+                    ReviewRow(title: "Total Earnings", value: formatCurrency(shiftEarnings), icon: "banknote", valueColor: viewModel.themeColor)
+                    ReviewRow(title: "Payment Status", value: isPaid ? "Paid" : "Not Paid", icon: isPaid ? "checkmark.seal.fill" : "checkmark.seal", valueColor: isPaid ? .green : .secondary)
+                }
+            }
+            
+            // Notes section
+            FormCard(title: "Notes") {
+                TextEditor(text: $notes)
+                    .frame(height: 80)
+                    .padding(4)
+                    .background(Color(.systemGray6).opacity(0.5))
+                    .cornerRadius(8)
+                    .placeholderOverlay(notes.isEmpty ? "Add any additional details..." : nil)
+            }
+            
+            // Delete button
+            Button(action: { showingDeleteConfirmation = true }) {
+                HStack {
+                    Spacer()
+                    Image(systemName: "trash.fill")
+                    Text("Delete Shift")
+                        .font(.headline)
+                    Spacer()
+                }
+                .padding()
+                .background(Color.red.opacity(0.8))
+                .cornerRadius(15)
+                .foregroundColor(.white)
+                .shadow(color: .red.opacity(0.4), radius: 8, x: 0, y: 4)
+            }
+            .padding(.vertical)
+        }
+    }
+    
+    // MARK: - Navigation Footer
+    
+    private var navigationFooter: some View {
+        VStack(spacing: 0) {
+            Divider()
+            
+            HStack(spacing: 20) {
+                if currentStep != .basics {
+                    Button(action: goToPreviousStep) {
+                        Label("Back", systemImage: "chevron.left")
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(10)
+                            .foregroundColor(viewModel.themeColor)
+                    }
+                } else {
+                    Spacer().frame(width: 85)
+                }
+                
+                Spacer()
+                
+                if currentStep != .review {
+                    Button(action: goToNextStep) {
+                        Label("Next", systemImage: "chevron.right")
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(viewModel.themeColor)
+                            .cornerRadius(10)
+                            .foregroundColor(.white)
+                    }
+                } else {
+                    Button(action: updateShift) {
+                        Label("Save", systemImage: "checkmark")
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(viewModel.themeColor)
+                            .cornerRadius(10)
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(Color(.systemBackground))
+        }
+    }
+    
+    // MARK: - Navigation Logic
+    
+    private func goToNextStep() {
+        withAnimation {
+            if currentStep.rawValue < ShiftFormStep.allCases.count - 1 {
+                currentStep = ShiftFormStep(rawValue: currentStep.rawValue + 1)!
+            }
+        }
+    }
+    
+    private func goToPreviousStep() {
+        withAnimation {
+            if currentStep.rawValue > 0 {
+                currentStep = ShiftFormStep(rawValue: currentStep.rawValue - 1)!
+            }
+        }
+    }
+    
     // MARK: - Actions
     
     private func updateShift() {
-        // Validate input
         guard shiftDuration > 0 else {
             errorMessage = "Shift duration must be greater than 0"
             showingError = true
             return
         }
         
-        // Check if shift is part of a recurring series
         if isRecurring {
             showingRecurringUpdateAlert = true
         } else {
@@ -272,7 +384,6 @@ struct EditShiftView: View {
     }
     
     private func saveShiftChanges(updateOption: RecurringUpdateOption) {
-        // Create updated shift with changes
         var updatedShift = shift
         updatedShift.jobId = selectedJobId
         updatedShift.date = date
@@ -284,7 +395,6 @@ struct EditShiftView: View {
         updatedShift.isPaid = isPaid
         updatedShift.hourlyRateOverride = useCustomRate ? hourlyRateOverride : nil
         
-        // Update shifts based on selected option
         switch updateOption {
         case .thisOnly:
             viewModel.updateShift(updatedShift)
@@ -306,17 +416,14 @@ struct EditShiftView: View {
     
     private func combineDateTime(date: Date, time: Date) -> Date {
         let calendar = Calendar.current
-        
         let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
         let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
-        
         var combinedComponents = DateComponents()
         combinedComponents.year = dateComponents.year
         combinedComponents.month = dateComponents.month
         combinedComponents.day = dateComponents.day
         combinedComponents.hour = timeComponents.hour
         combinedComponents.minute = timeComponents.minute
-        
         return calendar.date(from: combinedComponents)!
     }
     
@@ -343,5 +450,19 @@ struct EditShiftView: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
