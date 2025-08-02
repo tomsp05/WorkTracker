@@ -17,6 +17,12 @@ class DataService {
     private let payslipsKey = "saved_payslips"
     private let paySchedulesKey = "saved_pay_schedules"
     
+    // App Group for sharing data with widget
+    private let appGroupIdentifier = "group.com.TomSpeake.WorkTracker"
+    private var sharedUserDefaults: UserDefaults {
+        return UserDefaults(suiteName: appGroupIdentifier) ?? UserDefaults.standard
+    }
+    
     private init() {}
     
     // MARK: - Jobs
@@ -25,14 +31,14 @@ class DataService {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(jobs)
-            UserDefaults.standard.set(data, forKey: jobsKey)
+            sharedUserDefaults.set(data, forKey: jobsKey)
         } catch {
             print("Error saving jobs: \(error.localizedDescription)")
         }
     }
     
     func loadJobs() -> [Job]? {
-        guard let data = UserDefaults.standard.data(forKey: jobsKey) else {
+        guard let data = sharedUserDefaults.data(forKey: jobsKey) else {
             return nil
         }
         
@@ -52,14 +58,14 @@ class DataService {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(shifts)
-            UserDefaults.standard.set(data, forKey: shiftsKey)
+            sharedUserDefaults.set(data, forKey: shiftsKey)
         } catch {
             print("Error saving work shifts: \(error.localizedDescription)")
         }
     }
     
     func loadWorkShifts() -> [WorkShift]? {
-        guard let data = UserDefaults.standard.data(forKey: shiftsKey) else {
+        guard let data = sharedUserDefaults.data(forKey: shiftsKey) else {
             return nil
         }
         
@@ -79,14 +85,14 @@ class DataService {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(payslips)
-            UserDefaults.standard.set(data, forKey: payslipsKey)
+            sharedUserDefaults.set(data, forKey: payslipsKey)
         } catch {
             print("Error saving payslips: \(error.localizedDescription)")
         }
     }
     
     func loadPayslips() -> [Payslip]? {
-        guard let data = UserDefaults.standard.data(forKey: payslipsKey) else {
+        guard let data = sharedUserDefaults.data(forKey: payslipsKey) else {
             return nil
         }
         do {
@@ -104,14 +110,14 @@ class DataService {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(schedules)
-            UserDefaults.standard.set(data, forKey: paySchedulesKey)
+            sharedUserDefaults.set(data, forKey: paySchedulesKey)
         } catch {
             print("Error saving pay schedules: \(error.localizedDescription)")
         }
     }
     
     func loadPaySchedules() -> [PaySchedule]? {
-        guard let data = UserDefaults.standard.data(forKey: paySchedulesKey) else {
+        guard let data = sharedUserDefaults.data(forKey: paySchedulesKey) else {
             return nil
         }
         do {
@@ -127,11 +133,11 @@ class DataService {
     // MARK: - Theme Color
     
     func saveThemeColor(_ colorName: String) {
-        UserDefaults.standard.set(colorName, forKey: themeColorKey)
+        sharedUserDefaults.set(colorName, forKey: themeColorKey)
     }
     
     func loadThemeColor() -> String? {
-        return UserDefaults.standard.string(forKey: themeColorKey)
+        return sharedUserDefaults.string(forKey: themeColorKey)
     }
     
     // MARK: - Data Import/Export
@@ -183,8 +189,8 @@ class DataService {
     // MARK: - Reset Data
     
     func resetAllData() {
-        UserDefaults.standard.removeObject(forKey: jobsKey)
-        UserDefaults.standard.removeObject(forKey: shiftsKey)
+        sharedUserDefaults.removeObject(forKey: jobsKey)
+        sharedUserDefaults.removeObject(forKey: shiftsKey)
         // Don't reset theme color, just the data
     }
 }

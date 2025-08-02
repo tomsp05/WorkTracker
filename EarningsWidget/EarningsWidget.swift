@@ -20,9 +20,9 @@ struct Provider: AppIntentTimelineProvider {
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         var entries: [SimpleEntry] = []
 
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
+        // Generate timeline entries for the next 8 hours, updating every hour
         let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
+        for hourOffset in 0 ..< 8 {
             let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
             let entry = SimpleEntry(date: entryDate, configuration: configuration)
             entries.append(entry)
@@ -30,10 +30,6 @@ struct Provider: AppIntentTimelineProvider {
 
         return Timeline(entries: entries, policy: .atEnd)
     }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
 }
 
 struct SimpleEntry: TimelineEntry {
@@ -43,15 +39,155 @@ struct SimpleEntry: TimelineEntry {
 
 struct EarningsWidgetEntryView : View {
     var entry: Provider.Entry
+    
+    // Get theme color from shared preferences
+    private var themeColorName: String {
+        SharedDataService.shared.themeColor()
+    }
+    
+    private var themeColor: Color {
+        switch themeColorName {
+        case "Blue":
+            return Color(red: 0.20, green: 0.40, blue: 0.70)
+        case "Green":
+            return Color(red: 0.20, green: 0.55, blue: 0.30)
+        case "Orange":
+            return Color(red: 0.80, green: 0.40, blue: 0.20)
+        case "Purple":
+            return Color(red: 0.50, green: 0.25, blue: 0.70)
+        case "Red":
+            return Color(red: 0.70, green: 0.20, blue: 0.20)
+        case "Teal":
+            return Color(red: 0.20, green: 0.50, blue: 0.60)
+        case "Pink":
+            return Color(red: 0.90, green: 0.40, blue: 0.60)
+        default:
+            return Color(red: 0.20, green: 0.40, blue: 0.70)
+        }
+    }
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        VStack(spacing: 0) {
+            // Header with month
+            HStack {
+                Text(currentMonthTitle)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Image(systemName: "dollarsign.circle.fill")
+                    .foregroundColor(.white.opacity(0.8))
+                    .font(.title3)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            
+            Spacer()
+            
+            // Main earnings display
+            let monthlyEarnings = SharedDataService.shared.monthlyEarnings()
+            let monthlyHours = SharedDataService.shared.monthlyHours()
+            
+            VStack(spacing: 4) {
+                if monthlyEarnings == 0 && monthlyHours == 0 {
+                    // No data state
+                    VStack(spacing: 2) {
+                        Text("No shifts yet")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.9))
+                        
+                        Text("Add your first shift")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                } else {
+                    // Normal data display
+                    Text(formatCurrency(monthlyEarnings))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    Text("\(formatHours(monthlyHours)) this month")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.85))
+                }
+            }
+            .padding(.horizontal, 16)
+            
+            Spacer()
+            
+            // Bottom stats row
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("This Week")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    Text(formatCurrency(SharedDataService.shared.weeklyEarnings()))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Today")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    Text(formatHours(SharedDataService.shared.todayHours()))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    themeColor.opacity(0.8),
+                    themeColor
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+    
+    // MARK: - Helper Methods
+    
+    private var currentMonthTitle: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM"
+        return formatter.string(from: entry.date)
+    }
+    
+    private func formatCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "£"
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.maximumFractionDigits = 0
+        formatter.minimumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? "£0"
+    }
+    
+    private func formatHours(_ hours: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        
+        guard let formattedHours = formatter.string(from: NSNumber(value: hours)) else {
+            return "\(hours)h"
+        }
+        
+        return "\(formattedHours)h"
     }
 }
 
@@ -62,20 +198,17 @@ struct EarningsWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
             EarningsWidgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(URL(string: "worktracker://earnings"))
         }
+        .configurationDisplayName("Work Earnings")
+        .description("Track your monthly earnings and hours worked")
+        .supportedFamilies([.systemSmall])
     }
 }
 
 extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
+    fileprivate static var standard: ConfigurationAppIntent {
         let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
         return intent
     }
 }
@@ -83,6 +216,6 @@ extension ConfigurationAppIntent {
 #Preview(as: .systemSmall) {
     EarningsWidget()
 } timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
+    SimpleEntry(date: .now, configuration: .standard)
+    SimpleEntry(date: Date().addingTimeInterval(3600), configuration: .standard)
 }
