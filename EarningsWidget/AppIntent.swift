@@ -9,10 +9,27 @@ import WidgetKit
 import AppIntents
 
 struct ConfigurationAppIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "Configuration" }
-    static var description: IntentDescription { "This is an example widget." }
+    static var title: LocalizedStringResource { "Work Tracker Widget" }
+    static var description: IntentDescription { "View your work shift information and earnings at a glance." }
 
-    // An example configurable parameter.
-    @Parameter(title: "Favorite Emoji", default: "😃")
-    var favoriteEmoji: String
+    @Parameter(title: "Show Period", default: .thisWeek)
+    var timePeriod: TimePeriodOption
+}
+
+enum TimePeriodOption: String, CaseIterable, AppEnum {
+    case today = "today"
+    case thisWeek = "thisWeek"
+    case thisMonth = "thisMonth"
+    
+    static var typeDisplayRepresentation: TypeDisplayRepresentation {
+        "Time Period"
+    }
+    
+    static var caseDisplayRepresentations: [TimePeriodOption: DisplayRepresentation] {
+        [
+            .today: "Today",
+            .thisWeek: "This Week", 
+            .thisMonth: "This Month"
+        ]
+    }
 }

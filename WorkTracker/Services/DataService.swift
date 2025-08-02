@@ -26,16 +26,18 @@ class DataService {
             let encoder = JSONEncoder()
             let data = try encoder.encode(jobs)
             UserDefaults.standard.set(data, forKey: jobsKey)
+            // Also save to shared container for widget access
+            UserDefaults(suiteName: "group.com.TomSpeake.WorkTracker")?.set(data, forKey: jobsKey)
         } catch {
             print("Error saving jobs: \(error.localizedDescription)")
         }
     }
-    
+
     func loadJobs() -> [Job]? {
         guard let data = UserDefaults.standard.data(forKey: jobsKey) else {
             return nil
         }
-        
+
         do {
             let decoder = JSONDecoder()
             let jobs = try decoder.decode([Job].self, from: data)
@@ -44,25 +46,25 @@ class DataService {
             print("Error loading jobs: \(error.localizedDescription)")
             return nil
         }
-    }
-    
-    // MARK: - Work Shifts
+    }    // MARK: - Work Shifts
     
     func saveWorkShifts(_ shifts: [WorkShift]) {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(shifts)
             UserDefaults.standard.set(data, forKey: shiftsKey)
+            // Also save to shared container for widget access
+            UserDefaults(suiteName: "group.com.TomSpeake.WorkTracker")?.set(data, forKey: shiftsKey)
         } catch {
             print("Error saving work shifts: \(error.localizedDescription)")
         }
     }
-    
+
     func loadWorkShifts() -> [WorkShift]? {
         guard let data = UserDefaults.standard.data(forKey: shiftsKey) else {
             return nil
         }
-        
+
         do {
             let decoder = JSONDecoder()
             let shifts = try decoder.decode([WorkShift].self, from: data)
@@ -71,9 +73,7 @@ class DataService {
             print("Error loading work shifts: \(error.localizedDescription)")
             return nil
         }
-    }
-    
-    // MARK: - Payslips
+    }    // MARK: - Payslips
     
     func savePayslips(_ payslips: [Payslip]) {
         do {
@@ -128,6 +128,8 @@ class DataService {
     
     func saveThemeColor(_ colorName: String) {
         UserDefaults.standard.set(colorName, forKey: themeColorKey)
+        // Also save to shared container for widget access
+        UserDefaults(suiteName: "group.com.TomSpeake.WorkTracker")?.set(colorName, forKey: themeColorKey)
     }
     
     func loadThemeColor() -> String? {
