@@ -68,11 +68,21 @@
 			);
 			target = 7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */;
 		};
+		7AB37EEA2E3E53CD006D1A1F /* Exceptions for "WorkTracker" folder in "EarningsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/Job.swift,
+			);
+			target = 7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7A9B3BDC2DB18F6E00A7693B /* WorkTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7AB37EEA2E3E53CD006D1A1F /* Exceptions for "WorkTracker" folder in "EarningsWidgetExtension" target */,
+			);
 			path = WorkTracker;
 			sourceTree = "<group>";
 		};
