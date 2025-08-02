@@ -16,11 +16,19 @@
 import Foundation
 
 struct PresetShift: Identifiable, Codable, Equatable, Hashable {
-    var id = UUID()
+    var id: UUID
     var name: String
     var startTime: Date
     var endTime: Date
     var breakDuration: Double
+    
+    init(id: UUID = UUID(), name: String, startTime: Date, endTime: Date, breakDuration: Double) {
+        self.id = id
+        self.name = name
+        self.startTime = startTime
+        self.endTime = endTime
+        self.breakDuration = breakDuration
+    }
     
     // Computed property for duration
     var duration: Double {
