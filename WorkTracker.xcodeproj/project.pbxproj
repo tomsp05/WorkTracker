@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7AB37DD32E3E4E92006D1A1F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7AB37DD22E3E4E92006D1A1F /* WidgetKit.framework */; };
+		7AB37DD52E3E4E92006D1A1F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7AB37DD42E3E4E92006D1A1F /* SwiftUI.framework */; };
+		7AB37DE62E3E4E94006D1A1F /* EarningsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7AB37DD02E3E4E92006D1A1F /* EarningsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7A9B3BEB2DB18F7000A7693B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +27,48 @@
 			remoteGlobalIDString = 7A9B3BD92DB18F6E00A7693B;
 			remoteInfo = WorkTracker;
 		};
+		7AB37DE42E3E4E94006D1A1F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7A9B3BD22DB18F6E00A7693B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7AB37DCF2E3E4E92006D1A1F;
+			remoteInfo = EarningsWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7AB37DE72E3E4E94006D1A1F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7AB37DE62E3E4E94006D1A1F /* EarningsWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7A9B3BDA2DB18F6E00A7693B /* WorkTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A9B3BEA2DB18F7000A7693B /* WorkTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A9B3BF42DB18F7000A7693B /* WorkTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7AB37DD02E3E4E92006D1A1F /* EarningsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EarningsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7AB37DD22E3E4E92006D1A1F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		7AB37DD42E3E4E92006D1A1F /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		7AB37E672E3E4EBB006D1A1F /* EarningsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EarningsWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7AB37DEA2E3E4E94006D1A1F /* Exceptions for "EarningsWidget" folder in "EarningsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7A9B3BDC2DB18F6E00A7693B /* WorkTracker */ = {
@@ -43,6 +84,14 @@
 		7A9B3BF72DB18F7000A7693B /* WorkTrackerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = WorkTrackerUITests;
+			sourceTree = "<group>";
+		};
+		7AB37DD62E3E4E92006D1A1F /* EarningsWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7AB37DEA2E3E4E94006D1A1F /* Exceptions for "EarningsWidget" folder in "EarningsWidgetExtension" target */,
+			);
+			path = EarningsWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,15 +118,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AB37DCD2E3E4E92006D1A1F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AB37DD52E3E4E92006D1A1F /* SwiftUI.framework in Frameworks */,
+				7AB37DD32E3E4E92006D1A1F /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		7A9B3BD12DB18F6E00A7693B = {
 			isa = PBXGroup;
 			children = (
+				7AB37E672E3E4EBB006D1A1F /* EarningsWidgetExtension.entitlements */,
 				7A9B3BDC2DB18F6E00A7693B /* WorkTracker */,
 				7A9B3BED2DB18F7000A7693B /* WorkTrackerTests */,
 				7A9B3BF72DB18F7000A7693B /* WorkTrackerUITests */,
+				7AB37DD62E3E4E92006D1A1F /* EarningsWidget */,
+				7AB37DD12E3E4E92006D1A1F /* Frameworks */,
 				7A9B3BDB2DB18F6E00A7693B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +149,18 @@
 				7A9B3BDA2DB18F6E00A7693B /* WorkTracker.app */,
 				7A9B3BEA2DB18F7000A7693B /* WorkTrackerTests.xctest */,
 				7A9B3BF42DB18F7000A7693B /* WorkTrackerUITests.xctest */,
+				7AB37DD02E3E4E92006D1A1F /* EarningsWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7AB37DD12E3E4E92006D1A1F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7AB37DD22E3E4E92006D1A1F /* WidgetKit.framework */,
+				7AB37DD42E3E4E92006D1A1F /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,10 +173,12 @@
 				7A9B3BD62DB18F6E00A7693B /* Sources */,
 				7A9B3BD72DB18F6E00A7693B /* Frameworks */,
 				7A9B3BD82DB18F6E00A7693B /* Resources */,
+				7AB37DE72E3E4E94006D1A1F /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7AB37DE52E3E4E94006D1A1F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7A9B3BDC2DB18F6E00A7693B /* WorkTracker */,
@@ -163,6 +236,28 @@
 			productReference = 7A9B3BF42DB18F7000A7693B /* WorkTrackerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7AB37DEB2E3E4E94006D1A1F /* Build configuration list for PBXNativeTarget "EarningsWidgetExtension" */;
+			buildPhases = (
+				7AB37DCC2E3E4E92006D1A1F /* Sources */,
+				7AB37DCD2E3E4E92006D1A1F /* Frameworks */,
+				7AB37DCE2E3E4E92006D1A1F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7AB37DD62E3E4E92006D1A1F /* EarningsWidget */,
+			);
+			name = EarningsWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = EarningsWidgetExtension;
+			productReference = 7AB37DD02E3E4E92006D1A1F /* EarningsWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -170,7 +265,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					7A9B3BD92DB18F6E00A7693B = {
@@ -183,6 +278,9 @@
 					7A9B3BF32DB18F7000A7693B = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 7A9B3BD92DB18F6E00A7693B;
+					};
+					7AB37DCF2E3E4E92006D1A1F = {
+						CreatedOnToolsVersion = 26.0;
 					};
 				};
 			};
@@ -203,6 +301,7 @@
 				7A9B3BD92DB18F6E00A7693B /* WorkTracker */,
 				7A9B3BE92DB18F7000A7693B /* WorkTrackerTests */,
 				7A9B3BF32DB18F7000A7693B /* WorkTrackerUITests */,
+				7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +322,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7A9B3BF22DB18F7000A7693B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7AB37DCE2E3E4E92006D1A1F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +359,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AB37DCC2E3E4E92006D1A1F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +378,11 @@
 			isa = PBXTargetDependency;
 			target = 7A9B3BD92DB18F6E00A7693B /* WorkTracker */;
 			targetProxy = 7A9B3BF52DB18F7000A7693B /* PBXContainerItemProxy */;
+		};
+		7AB37DE52E3E4E94006D1A1F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */;
+			targetProxy = 7AB37DE42E3E4E94006D1A1F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -397,6 +515,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WorkTracker/WorkTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"WorkTracker/Preview Content\"";
@@ -426,6 +545,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WorkTracker/WorkTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"WorkTracker/Preview Content\"";
@@ -518,6 +638,68 @@
 			};
 			name = Release;
 		};
+		7AB37DE82E3E4E94006D1A1F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = EarningsWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EarningsWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EarningsWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tomsp05.WorkTracker.EarningsWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7AB37DE92E3E4E94006D1A1F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = EarningsWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EarningsWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EarningsWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tomsp05.WorkTracker.EarningsWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -553,6 +735,15 @@
 			buildConfigurations = (
 				7A9B3C052DB18F7000A7693B /* Debug */,
 				7A9B3C062DB18F7000A7693B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7AB37DEB2E3E4E94006D1A1F /* Build configuration list for PBXNativeTarget "EarningsWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7AB37DE82E3E4E94006D1A1F /* Debug */,
+				7AB37DE92E3E4E94006D1A1F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
