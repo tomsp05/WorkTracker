@@ -16,3 +16,6 @@ struct Job: Identifiable, Codable, Hashable {
     var isActive: Bool = true
     var presetShifts: [PresetShift] = [] // Added preset shifts array
 }
+
+
+//thifvnsfdeilvweivs is a a ttesdfnewijfnerkjfvnerwjkvnerwojvnweprivnewi
