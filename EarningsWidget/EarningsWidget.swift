@@ -87,15 +87,33 @@ struct EarningsWidgetEntryView : View {
             Spacer()
             
             // Main earnings display
+            let monthlyEarnings = SharedDataService.shared.monthlyEarnings()
+            let monthlyHours = SharedDataService.shared.monthlyHours()
+            
             VStack(spacing: 4) {
-                Text(formatCurrency(SharedDataService.shared.monthlyEarnings()))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text("\(formatHours(SharedDataService.shared.monthlyHours())) this month")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.85))
+                if monthlyEarnings == 0 && monthlyHours == 0 {
+                    // No data state
+                    VStack(spacing: 2) {
+                        Text("No shifts yet")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.9))
+                        
+                        Text("Add your first shift")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                } else {
+                    // Normal data display
+                    Text(formatCurrency(monthlyEarnings))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    Text("\(formatHours(monthlyHours)) this month")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.85))
+                }
             }
             .padding(.horizontal, 16)
             
@@ -180,6 +198,7 @@ struct EarningsWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
             EarningsWidgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(URL(string: "worktracker://earnings"))
         }
         .configurationDisplayName("Work Earnings")
         .description("Track your monthly earnings and hours worked")
