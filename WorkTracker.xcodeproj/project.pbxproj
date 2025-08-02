@@ -61,6 +61,62 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7A3ECDCC2E3E852D00939382 /* Exceptions for "WorkTracker" folder in "EarningsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ContentView.swift,
+				Onboarding/OnboardingContainerView.swift,
+				Onboarding/OnboardingFinishView.swift,
+				Onboarding/OnboardingJobsView.swift,
+				Onboarding/OnboardingSettingsView.swift,
+				Onboarding/OnboardingWelcomeView.swift,
+				Onboarding/ThemeColorButton.swift,
+				Services/AnalyticsFilterState.swift,
+				Services/DataService.swift,
+				Services/PayrollIntegrationHelper.swift,
+				Views/AddShiftView.swift,
+				Views/CalendarView.swift,
+				Views/CountingValueView.swift,
+				Views/EarningsDetailView.swift,
+				Views/EditShiftView.swift,
+				Views/Jobs/JobCardView.swift,
+				Views/Jobs/JobDetailView.swift,
+				Views/Jobs/JobFormView.swift,
+				Views/Jobs/JobsListView.swift,
+				Views/NavCardView.swift,
+				Views/Payroll/PayComparisonDetailView.swift,
+				Views/Payroll/PayComparisonView.swift,
+				Views/Payroll/PayrollManagementView.swift,
+				Views/Payroll/PayScheduleFormView.swift,
+				Views/Payroll/PayScheduleListView.swift,
+				Views/Payroll/PayScheduleViewModel.swift,
+				Views/Payroll/PayslipDetailView.swift,
+				Views/Payroll/PayslipFormView.swift,
+				Views/Payroll/PayslipListView.swift,
+				Views/Payroll/PayslipViewModel.swift,
+				Views/PresetShiftFormView.swift,
+				Views/SettingsView.swift,
+				Views/ShiftCardView.swift,
+				Views/ShiftFilterStore.swift,
+				Views/ShiftFilterView.swift,
+				Views/ShiftFormStep.swift,
+				Views/ShiftsListView.swift,
+				Views/WorkHoursViewModel.swift,
+				WorkTrackerApp.swift,
+			);
+			target = 7AB37DCF2E3E4E92006D1A1F /* EarningsWidgetExtension */;
+		};
+		7A93914D2E3E8373008B2622 /* Exceptions for "EarningsWidget" folder in "WorkTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AppIntent.swift,
+				EarningsWidget.swift,
+				EarningsWidgetBundle.swift,
+				EarningsWidgetControl.swift,
+				EarningsWidgetLiveActivity.swift,
+			);
+			target = 7A9B3BD92DB18F6E00A7693B /* WorkTracker */;
+		};
 		7AB37DEA2E3E4E94006D1A1F /* Exceptions for "EarningsWidget" folder in "EarningsWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -73,6 +129,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7A9B3BDC2DB18F6E00A7693B /* WorkTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7A3ECDCC2E3E852D00939382 /* Exceptions for "WorkTracker" folder in "EarningsWidgetExtension" target */,
+			);
 			path = WorkTracker;
 			sourceTree = "<group>";
 		};
@@ -89,6 +148,7 @@
 		7AB37DD62E3E4E92006D1A1F /* EarningsWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				7A93914D2E3E8373008B2622 /* Exceptions for "EarningsWidget" folder in "WorkTracker" target */,
 				7AB37DEA2E3E4E94006D1A1F /* Exceptions for "EarningsWidget" folder in "EarningsWidgetExtension" target */,
 			);
 			path = EarningsWidget;
