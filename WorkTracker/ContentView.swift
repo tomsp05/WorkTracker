@@ -101,6 +101,14 @@ struct ContentView: View {
                 .padding(.bottom, 20)
             }
             .navigationTitle("Shifts")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SettingsView()) {
+                        Image(systemName: "gear")
+                            .foregroundColor(viewModel.themeColor)
+                    }
+                }
+            }
             .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
             .onAppear {
                 previousEarnings = currentEarnings
@@ -227,12 +235,12 @@ struct ContentView: View {
         VStack(spacing: 16) {
             HStack(spacing: 16) {
                 NavigationLink(destination: CalendarView()) {
-                                    NavCardView(
-                                        title: "Calendar",
-                                        subtitle: "View Shifts",
-                                        iconName: "calendar"
-                                    )
-                                }
+                    NavCardView(
+                        title: "Calendar",
+                        subtitle: "View Shifts",
+                        iconName: "calendar"
+                    )
+                }
                 
                 NavigationLink(destination: JobsListView()) {
                     NavCardView(
@@ -252,11 +260,11 @@ struct ContentView: View {
                     )
                 }
                 
-                NavigationLink(destination: SettingsView()) {
+                NavigationLink(destination: PayrollManagementView(jobs: viewModel.jobs, shifts: viewModel.shifts)) {
                     NavCardView(
-                        title: "Settings",
-                        subtitle: "Customise",
-                        iconName: "gear"
+                        title: "Payroll",
+                        subtitle: "Schedules",
+                        iconName: "banknote"
                     )
                 }
             }

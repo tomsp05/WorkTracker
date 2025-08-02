@@ -8,7 +8,7 @@
 
 import Foundation
 
-struct Job: Identifiable, Codable {
+struct Job: Identifiable, Codable, Hashable {
     var id = UUID()
     var name: String
     var hourlyRate: Double

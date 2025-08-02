@@ -15,7 +15,7 @@
 
 import Foundation
 
-struct PresetShift: Identifiable, Codable {
+struct PresetShift: Identifiable, Codable, Equatable, Hashable {
     var id = UUID()
     var name: String
     var startTime: Date

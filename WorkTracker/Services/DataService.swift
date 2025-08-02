@@ -14,6 +14,8 @@ class DataService {
     private let shiftsKey = "saved_shifts"
     private let themeColorKey = "theme_color"
     private let templatesKey = "saved_templates"
+    private let payslipsKey = "saved_payslips"
+    private let paySchedulesKey = "saved_pay_schedules"
     
     private init() {}
     
@@ -67,6 +69,57 @@ class DataService {
             return shifts
         } catch {
             print("Error loading work shifts: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // MARK: - Payslips
+    
+    func savePayslips(_ payslips: [Payslip]) {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(payslips)
+            UserDefaults.standard.set(data, forKey: payslipsKey)
+        } catch {
+            print("Error saving payslips: \(error.localizedDescription)")
+        }
+    }
+    
+    func loadPayslips() -> [Payslip]? {
+        guard let data = UserDefaults.standard.data(forKey: payslipsKey) else {
+            return nil
+        }
+        do {
+            let decoder = JSONDecoder()
+            let payslips = try decoder.decode([Payslip].self, from: data)
+            return payslips
+        } catch {
+            print("Error loading payslips: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // MARK: - Pay Schedules
+    func savePaySchedules(_ schedules: [PaySchedule]) {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(schedules)
+            UserDefaults.standard.set(data, forKey: paySchedulesKey)
+        } catch {
+            print("Error saving pay schedules: \(error.localizedDescription)")
+        }
+    }
+    
+    func loadPaySchedules() -> [PaySchedule]? {
+        guard let data = UserDefaults.standard.data(forKey: paySchedulesKey) else {
+            return nil
+        }
+        do {
+            let decoder = JSONDecoder()
+            let schedules = try decoder.decode([PaySchedule].self, from: data)
+            return schedules
+        } catch {
+            print("Error loading pay schedules: \(error.localizedDescription)")
             return nil
         }
     }
@@ -143,5 +196,4 @@ struct ExportData: Codable {
     let themeColor: String
     let exportDate: Date
 }
-
 
