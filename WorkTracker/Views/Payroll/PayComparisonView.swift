@@ -74,7 +74,7 @@ struct PayComparisonView: View {
                                         
                                         Text("\(filteredPayslips.count) payslips available")
                                             .font(.caption)
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(viewModel.themeColor.opacity(0.7))
                                     }
                                     
                                     Spacer()
@@ -83,7 +83,7 @@ struct PayComparisonView: View {
                                         VStack(alignment: .trailing, spacing: 2) {
                                             Text("Overall Accuracy")
                                                 .font(.caption2)
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(viewModel.themeColor.opacity(0.6))
                                             Text(String(format: "%.1f%%", overallAccuracy))
                                                 .font(.title3)
                                                 .fontWeight(.bold)
@@ -101,7 +101,7 @@ struct PayComparisonView: View {
                                         Spacer()
                                         Image(systemName: "chevron.right")
                                             .font(.caption)
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(viewModel.themeColor.opacity(0.7))
                                     }
                                     .foregroundColor(viewModel.themeColor)
                                 }
@@ -110,12 +110,12 @@ struct PayComparisonView: View {
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                .fill(viewModel.themeColor.opacity(0.08))
+                                .shadow(color: viewModel.themeColor.opacity(0.15), radius: 8, x: 0, y: 2)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color(.systemGray5), lineWidth: 1)
+                                .stroke(viewModel.themeColor.opacity(0.12), lineWidth: 1)
                         )
                     }
                     .padding(.horizontal)
@@ -215,7 +215,7 @@ struct EmptyComparisonView: View {
                 
                 Text("Add payslips for \(jobName) to see comparisons with your logged shifts and expected earnings.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(viewModel.themeColor.opacity(0.7))
                     .multilineTextAlignment(.center)
             }
             
@@ -232,6 +232,11 @@ struct EmptyComparisonView: View {
             }
         }
         .padding(.vertical, 40)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(viewModel.themeColor.opacity(0.08))
+        )
     }
 }
 
@@ -251,11 +256,16 @@ struct SelectJobPromptView: View {
                 
                 Text("Choose a job from above to compare your expected earnings with actual payslips.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(viewModel.themeColor.opacity(0.7))
                     .multilineTextAlignment(.center)
             }
         }
         .padding(.vertical, 40)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(viewModel.themeColor.opacity(0.08))
+        )
     }
 }
 
@@ -311,12 +321,17 @@ struct ComparisonStatsView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemGray6))
+                .fill(viewModel.themeColor.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(viewModel.themeColor.opacity(0.12))
         )
     }
 }
 
 struct StatPillView: View {
+    @EnvironmentObject var viewModel: WorkHoursViewModel
     let title: String
     let value: String
     let color: Color
@@ -335,7 +350,7 @@ struct StatPillView: View {
             
             Text(title)
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundColor(viewModel.themeColor)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -343,7 +358,11 @@ struct StatPillView: View {
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.systemBackground))
+                .fill(viewModel.themeColor.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(viewModel.themeColor.opacity(0.19), lineWidth: 1)
         )
     }
 }
@@ -363,7 +382,7 @@ struct PayComparisonRowView: View {
                     
                     Text("\(comparison.payPeriod.startDate.formatted(date: .abbreviated, time: .omitted)) - \(comparison.payPeriod.endDate.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(viewModel.themeColor.opacity(0.7))
                 }
                 
                 Spacer()
@@ -375,7 +394,7 @@ struct PayComparisonRowView: View {
                     
                     Text("Pay Date")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(viewModel.themeColor.opacity(0.6))
                 }
             }
             
@@ -403,6 +422,7 @@ struct PayComparisonRowView: View {
                 Text("Net Pay")
                     .font(.subheadline)
                     .fontWeight(.medium)
+                    .foregroundColor(viewModel.themeColor)
                 
                 Spacer()
                 
@@ -414,23 +434,24 @@ struct PayComparisonRowView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(viewModel.themeColor.opacity(0.1))
+                    .fill(viewModel.themeColor.opacity(0.17))
             )
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .fill(viewModel.themeColor.opacity(0.07))
+                .shadow(color: viewModel.themeColor.opacity(0.12), radius: 8, x: 0, y: 2)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color(.systemGray5), lineWidth: 1)
+                .stroke(viewModel.themeColor.opacity(0.10), lineWidth: 1)
         )
     }
 }
 
 struct ComparisonMetricCard: View {
+    @EnvironmentObject var viewModel: WorkHoursViewModel
     let title: String
     let expected: Double
     let actual: Double
@@ -457,7 +478,7 @@ struct ComparisonMetricCard: View {
                 Text(title)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(viewModel.themeColor.opacity(0.8))
                 
                 Spacer()
                 
@@ -466,7 +487,7 @@ struct ComparisonMetricCard: View {
                     .fontWeight(.bold)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(accuracy >= 95 ? Color.green.opacity(0.2) : accuracy >= 85 ? Color.orange.opacity(0.2) : Color.red.opacity(0.2))
+                    .background(accuracy >= 95 ? viewModel.themeColor.opacity(0.2) : accuracy >= 85 ? viewModel.themeColor.opacity(0.2) : viewModel.themeColor.opacity(0.2))
                     .foregroundColor(accuracy >= 95 ? .green : accuracy >= 85 ? .orange : .red)
                     .cornerRadius(4)
             }
@@ -476,7 +497,7 @@ struct ComparisonMetricCard: View {
                 HStack {
                     Text("Expected:")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(viewModel.themeColor.opacity(0.7))
                     
                     Spacer()
                     
@@ -495,7 +516,7 @@ struct ComparisonMetricCard: View {
                 HStack {
                     Text("Actual:")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(viewModel.themeColor.opacity(0.7))
                     
                     Spacer()
                     
@@ -539,7 +560,7 @@ struct ComparisonMetricCard: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.systemGray6))
+                .fill(viewModel.themeColor.opacity(0.08))
         )
     }
 }

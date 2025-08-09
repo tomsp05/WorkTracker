@@ -10,6 +10,8 @@ import Foundation
 class DataService {
     static let shared = DataService()
     
+    private let fileCoordinator = NSFileCoordinator()
+    
     private let jobsKey = "saved_jobs"
     private let shiftsKey = "saved_shifts"
     private let themeColorKey = "theme_color"

@@ -120,7 +120,7 @@ struct PayrollManagementView: View {
                     Spacer(minLength: 20)
                 }
         }
-        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.05 : 0.02))
+        .background(viewModel.themeColor.opacity(colorScheme == .dark ? 0.2 : 0.1).ignoresSafeArea())
         .navigationTitle("Payroll")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -138,6 +138,7 @@ struct PayrollManagementView: View {
 
 struct PayrollFeatureCard: View {
     @EnvironmentObject var viewModel: WorkHoursViewModel
+    @Environment(\.colorScheme) var colorScheme
     let title: String
     let description: String
     let iconName: String
@@ -208,12 +209,12 @@ struct PayrollFeatureCard: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
+                .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.3 : 0.07))
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(iconColor.opacity(0.1), lineWidth: 1)
+                .stroke(viewModel.themeColor.opacity(0.15), lineWidth: 1)
         )
         .scaleEffect(0.98)
         .animation(.easeInOut(duration: 0.1), value: false)
@@ -222,6 +223,7 @@ struct PayrollFeatureCard: View {
 
 struct QuickPayrollStats: View {
     @EnvironmentObject var viewModel: WorkHoursViewModel
+    @Environment(\.colorScheme) var colorScheme
     let jobs: [Job]
     let shifts: [WorkShift]
     @StateObject private var payslipViewModel = PayslipViewModel()
@@ -307,12 +309,12 @@ struct QuickPayrollStats: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
+                .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.15 : 0.06))
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color(.systemGray5), lineWidth: 1)
+                .stroke(viewModel.themeColor.opacity(0.15), lineWidth: 1)
         )
     }
 }
@@ -324,6 +326,8 @@ struct EnhancedStatCard: View {
     let iconName: String
     let color: Color
     let trend: TrendDirection?
+    @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var viewModel: WorkHoursViewModel
     
     enum TrendDirection {
         case up, down, neutral
@@ -373,11 +377,11 @@ struct EnhancedStatCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(color.opacity(0.05))
+                .fill(viewModel.themeColor.opacity(colorScheme == .dark ? 0.15 : 0.06))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(color.opacity(0.1), lineWidth: 1)
+                .stroke(viewModel.themeColor.opacity(0.15), lineWidth: 1)
         )
     }
     
@@ -397,3 +401,4 @@ struct EnhancedStatCard: View {
         }
     }
 }
+
