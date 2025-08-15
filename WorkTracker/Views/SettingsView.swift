@@ -1,4 +1,5 @@
 import SwiftUI
+import CloudKit
 
 struct SettingsView: View {
     @EnvironmentObject var viewModel: WorkHoursViewModel
@@ -17,6 +18,9 @@ struct SettingsView: View {
 
     // State for showing onboarding sheet
     @State private var showOnboardingSheet = false
+
+    // iCloud availability state
+    @State private var isICloudAvailable: Bool? = nil
     
     // App Specific Settings
     @AppStorage("defaultTimeRange") private var defaultTimeRange = TimeRange.thisWeek.rawValue
@@ -161,6 +165,33 @@ struct SettingsView: View {
                 // Data Management section
                 settingsSection(title: "Data Management", icon: "externaldrive.fill") {
                     VStack(alignment: .leading, spacing: 16) {
+                        // Storage Location Row
+                        HStack(spacing: 10) {
+                            if let available = isICloudAvailable {
+                                Image(systemName: available ? "icloud.fill" : "internaldrive.fill")
+                                    .foregroundColor(available ? .blue : .gray)
+                                    .font(.title3)
+                                    .scaledToFit()
+                                    .frame(minWidth: 20, maxWidth: 30, minHeight: 20, maxHeight: 30)
+                                Text(available ? "Data stored in iCloud" : "Data stored locally")
+                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
+                            } else {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                                    .frame(width: 24, height: 24)
+                                Text("Checking...")
+                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                        }
+                        .padding(.bottom, 6)
+                        
                         Button(action: { showExportSheet = true }) {
                             HStack {
                                 Image(systemName: "square.and.arrow.up.fill")
@@ -306,6 +337,19 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             selectedTheme = viewModel.themeColorName
+            
+            CKContainer.default().accountStatus { status, error in
+                DispatchQueue.main.async {
+                    switch status {
+                    case .available:
+                        isICloudAvailable = true
+                    case .noAccount, .restricted, .couldNotDetermine, .temporarilyUnavailable:
+                        isICloudAvailable = false
+                    @unknown default:
+                        isICloudAvailable = false
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showExportSheet) {
             exportDataSheet

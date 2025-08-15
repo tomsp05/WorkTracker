@@ -6,9 +6,13 @@
 //
 
 import Foundation
+import CloudKit
 
 class DataService {
     static let shared = DataService()
+    
+    private let container = CKContainer(identifier: "iCloud.tomsp05.shifts")
+    private lazy var privateDatabase = container.privateCloudDatabase
     
     private let fileCoordinator = NSFileCoordinator()
     
@@ -28,6 +32,7 @@ class DataService {
             let encoder = JSONEncoder()
             let data = try encoder.encode(jobs)
             UserDefaults.standard.set(data, forKey: jobsKey)
+            saveJobsToiCloud(jobs: jobs)
         } catch {
             print("Error saving jobs: \(error.localizedDescription)")
         }
@@ -182,6 +187,31 @@ class DataService {
         }
     }
     
+    // MARK: - iCloud
+    
+    func saveJobsToiCloud(jobs: [Job]) {
+        let records = jobs.map { job -> CKRecord in
+            let record = CKRecord(recordType: "Job", recordID: CKRecord.ID(recordName: job.id.uuidString))
+            record["name"] = job.name
+            record["hourlyRate"] = job.hourlyRate
+            record["color"] = job.color
+            record["isActive"] = job.isActive
+            return record
+        }
+
+        let saveOperation = CKModifyRecordsOperation(recordsToSave: records, recordIDsToDelete: nil)
+        saveOperation.savePolicy = .allKeys
+        saveOperation.modifyRecordsResultBlock = { result in
+            switch result {
+            case .success:
+                print("Successfully saved jobs to iCloud")
+            case .failure(let error):
+                print("Error saving jobs to iCloud: \(error.localizedDescription)")
+            }
+        }
+        privateDatabase.add(saveOperation)
+    }
+    
     // MARK: - Reset Data
     
     func resetAllData() {
@@ -198,4 +228,3 @@ struct ExportData: Codable {
     let themeColor: String
     let exportDate: Date
 }
-
